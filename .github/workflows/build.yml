@@ -62,7 +62,7 @@ jobs:
     - name: Install Gradle
       uses: gradle/actions/setup-gradle@v5
       with:
-        gradle-version: '8.4.1'
+        gradle-version: 'current'
 
     - name: ☕ Setup Java
       uses: actions/setup-java@v5
