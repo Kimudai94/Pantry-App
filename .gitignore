@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+/node_modules
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+__coverage__/
+.nyc_output
+
+# Production
+/android/app/build
+/android/build
+/build
+dist/
+
+# Misc
+*.db
+.env
+.env.local
+.env.*.local
+.DS_Store
+*.pem
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Editor directories and files
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*.swo
+*~
+
+# IDEs
+.idea/
+*.iml
+
+# Gradle
+.gradle
+gradle-wrapper.jar
+
+# Local environment files
+local.properties
+
+# OS files
+Thumbs.db

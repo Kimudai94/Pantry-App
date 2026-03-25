@@ -1,0 +1,105 @@
+name: Android APK Build & Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test:
+    name: Run Tests & Linting
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x]
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v3
+    
+    - name: 🟢 Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: 📦 Install dependencies
+      run: npm install --legacy-peer-deps
+    
+    - name:   Fix vulnerabilities and retry install
+      if: failure()
+      run: |
+        npm audit fix --force
+        npm install --legacy-peer-deps
+    
+    - name:  🔍 Run ESLint
+      run: npm run lint
+      continue-on-error: true
+    
+    - name: 🧪 Run Tests
+      run: npm test -- --coverage
+      env:
+        CI: true
+
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v3
+    
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+    
+    - name: ☕ Setup Java
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+    
+    - name: 📦 Install Node dependencies
+      run: npm install --legacy-peer-deps
+    
+    - name:   Fix vulnerabilities and retry install
+      if: failure()
+      run: |
+        npm audit fix --force
+        npm install --legacy-peer-deps
+    
+    - name:  🔨 Build Release APK
+      run: |
+        npm run build:android
+      working-directory: .
+    
+    - name: ⬆️ Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: pantry-app-release.apk
+        path: android/app/build/outputs/apk/release/app-release.apk
+        if-no-files-found: 'warn'
+    
+    - name: ⬆️ Upload Debug APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: pantry-app-debug.apk
+        path: android/app/build/outputs/apk/debug/app-debug.apk
+        if-no-files-found: 'warn'
+    
+    - name: 📊 Build Success
+      if: success()
+      run: echo "✅ Build completed successfully!"
+    
+    - name: ❌ Build Failed
+      if: failure()
+      run: echo "❌ Build failed. Check logs above."
