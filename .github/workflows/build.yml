@@ -59,14 +59,18 @@ jobs:
         node-version: '18.x'
         cache: 'npm'
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v5
-    
+    - name: Install Gradle
+      run: |
+        GRADLE_VERSION=8.4.1
+        wget https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -q
+        unzip -q gradle-${GRADLE_VERSION}-bin.zip -d /opt/gradle
+        echo "/opt/gradle/gradle-${GRADLE_VERSION}/bin" >> $GITHUB_PATH
+
     - name: ☕ Setup Java
       uses: actions/setup-java@v5
       with:
         distribution: 'temurin'
-        java-version: '25'
+        java-version: '17'
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
