@@ -60,11 +60,9 @@ jobs:
         cache: 'npm'
 
     - name: Install Gradle
-      run: |
-        GRADLE_VERSION=8.4.1
-        wget https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -q
-        unzip -q gradle-${GRADLE_VERSION}-bin.zip -d /opt/gradle
-        echo "/opt/gradle/gradle-${GRADLE_VERSION}/bin" >> $GITHUB_PATH
+      uses: gradle/actions/setup-gradle@v5
+      with:
+        gradle-version: '8.4.1'
 
     - name: ☕ Setup Java
       uses: actions/setup-java@v5
