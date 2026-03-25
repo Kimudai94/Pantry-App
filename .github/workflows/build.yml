@@ -84,7 +84,7 @@ jobs:
     
     - name:  🔨 Build Release APK
       run: |
-        npm run build:android
+        gradlew assembleRelease
       working-directory: .
     
     - name: ⬆️ Upload APK Artifact
@@ -93,6 +93,11 @@ jobs:
         name: pantry-app-release.apk
         path: android/app/build/outputs/apk/release/app-release.apk
         if-no-files-found: 'warn'
+    
+    - name:  🔨 Build Release APK
+      run: |
+        gradlew assembleDebug
+      working-directory: .
     
     - name: ⬆️ Upload Debug APK Artifact
       uses: actions/upload-artifact@v4
