@@ -74,7 +74,9 @@ jobs:
       uses: android-actions/setup-android@v3
     
     - name: 📦 Install Node dependencies
-      run: npm install --legacy-peer-deps
+      run: |
+        npm install --legacy-peer-deps
+        which gradle && gradle -v
     
     - name:   Fix vulnerabilities and retry install
       if: failure()
@@ -84,27 +86,26 @@ jobs:
     
     - name:  🔨 Build Release APK
       run: |
-        which gradle && gradle -v
-        ./gradlew assembleRelease
+        gradle assembleRelease
       working-directory: .
     
     - name: ⬆️ Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: pantry-app-release.apk
-        path: android/app/build/outputs/apk/release/app-release.apk
+        path: app/build/outputs/apk/release/app-release.apk
         if-no-files-found: 'warn'
     
     - name:  🔨 Build Release APK
       run: |
-        gradlew assembleDebug
+        gradle assembleDebug
       working-directory: .
     
     - name: ⬆️ Upload Debug APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: pantry-app-debug.apk
-        path: android/app/build/outputs/apk/debug/app-debug.apk
+        path: app/build/outputs/apk/debug/app-debug.apk
         if-no-files-found: 'warn'
     
     - name: 📊 Build Success
