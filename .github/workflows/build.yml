@@ -76,7 +76,11 @@ jobs:
     - name: 📦 Install Node dependencies
       run: |
         npm install --legacy-peer-deps
+    
+    - name: 📦 Init gradle repo
+      run: |
         which gradle && gradle -v
+        gradle init
     
     - name:   Fix vulnerabilities and retry install
       if: failure()
@@ -96,7 +100,7 @@ jobs:
         path: app/build/outputs/apk/release/app-release.apk
         if-no-files-found: 'warn'
     
-    - name:  🔨 Build Release APK
+    - name:  🔨 Build Debug APK
       run: |
         gradle assembleDebug
       working-directory: .
