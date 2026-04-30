@@ -1,0 +1,4 @@
+<resources>
+
+    <style name="Theme.PantryPure" parent="Theme.MaterialComponents.Light" />
+</resources>

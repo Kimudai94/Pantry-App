@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Centered within 66x66 safe zone (21,21 to 87,87) -->
+    <!-- Simple icon representing a pantry shelf or a box with food items -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,35 h48 v40 q0,3 -3,3 h-42 q-3,0 -3,-3 z M30,45 h48 M42,55 h24 M42,65 h24"
+        android:strokeWidth="2"
+        android:strokeColor="#FFFFFF" />
+    <!-- Apple shape -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,25 q-5,0 -5,5 q0,5 5,5 q5,0 5,-5 q0,-5 -5,-5 z" />
+</vector>
