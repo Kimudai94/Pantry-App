@@ -12,11 +12,11 @@ import java.util.concurrent.TimeUnit
 class PantryPureApplication : Application() {
     private val database by lazy {
         Room.databaseBuilder(this, PantryDatabase::class.java, "pantry_database")
-            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigration(false)
             .build()
     }
     val repository by lazy {
-        PantryRepository(database.pantryDao(), database.consumptionDao())
+        PantryRepository(database.pantryDao(), database.consumptionDao(), database.mealDao(), database.mealIngredientDao())
     }
 
     override fun onCreate() {

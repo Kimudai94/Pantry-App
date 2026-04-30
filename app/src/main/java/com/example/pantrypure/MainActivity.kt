@@ -15,10 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.pantrypure.ui.navigation.Screen
-import com.example.pantrypure.ui.screen.AddEditItemScreen
-import com.example.pantrypure.ui.screen.HistoryScreen
-import com.example.pantrypure.ui.screen.InventoryListScreen
-import com.example.pantrypure.ui.screen.ShoppingListScreen
+import com.example.pantrypure.ui.screen.*
 import com.example.pantrypure.ui.theme.PantryPureTheme
 import com.example.pantrypure.ui.viewmodel.PantryViewModel
 import com.example.pantrypure.ui.viewmodel.PantryViewModelFactory
@@ -75,6 +72,9 @@ fun PantryPureApp(viewModel: PantryViewModel) {
                 },
                 onHistoryClick = {
                     navController.navigate(Screen.History.route)
+                },
+                onMealsClick = {
+                    navController.navigate(Screen.MealsList.route)
                 }
             )
         }
@@ -90,6 +90,18 @@ fun PantryPureApp(viewModel: PantryViewModel) {
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+        composable(Screen.MealsList.route) {
+            MealsListScreen(
+                viewModel = viewModel,
+                onAddMealClick = {
+                    navController.navigate(Screen.AddEditMeal.createRoute(null))
+                },
+                onMealClick = { mealId ->
+                    navController.navigate(Screen.MealDetail.createRoute(mealId))
+                },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
         composable(
             route = Screen.AddEditItem.route,
             arguments = listOf(navArgument("itemId") { type = NavType.LongType })
@@ -99,6 +111,31 @@ fun PantryPureApp(viewModel: PantryViewModel) {
                 viewModel = viewModel,
                 itemId = if (itemId == -1L) null else itemId,
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(
+            route = Screen.AddEditMeal.route,
+            arguments = listOf(navArgument("mealId") { type = NavType.LongType; defaultValue = -1L })
+        ) { backStackEntry ->
+            val mealId = backStackEntry.arguments?.getLong("mealId")
+            AddEditMealScreen(
+                viewModel = viewModel,
+                mealId = if (mealId == -1L) null else mealId,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(
+            route = Screen.MealDetail.route,
+            arguments = listOf(navArgument("mealId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val mealId = backStackEntry.arguments?.getLong("mealId") ?: -1L
+            MealDetailScreen(
+                viewModel = viewModel,
+                mealId = mealId,
+                onNavigateBack = { navController.popBackStack() },
+                onEditClick = {
+                    navController.navigate(Screen.AddEditMeal.createRoute(mealId))
+                }
             )
         }
     }
