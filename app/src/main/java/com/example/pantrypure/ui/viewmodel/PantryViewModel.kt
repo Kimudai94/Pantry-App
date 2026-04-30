@@ -2,8 +2,7 @@ package com.example.pantrypure.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.pantrypure.data.model.PantryItem
-import com.example.pantrypure.data.model.ConsumptionRecord
+import com.example.pantrypure.data.model.*
 import com.example.pantrypure.data.repository.PantryRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -13,6 +12,7 @@ enum class FilterOption { ALL, OVERDUE, EXPIRING_SOON }
 
 class PantryViewModel(private val repository: PantryRepository) : ViewModel() {
 
+    // ============== Pantry Item State ==============
     private val _sortOption = MutableStateFlow(SortOption.EXPIRY_DATE)
     val sortOption: StateFlow<SortOption> = _sortOption
 
@@ -60,6 +60,7 @@ class PantryViewModel(private val repository: PantryRepository) : ViewModel() {
         initialValue = emptyList()
     )
 
+    // ============== Pantry Item Methods ==============
     fun addItem(item: PantryItem) {
         viewModelScope.launch {
             repository.insertItem(item)
@@ -89,7 +90,7 @@ class PantryViewModel(private val repository: PantryRepository) : ViewModel() {
             viewModelScope.launch {
                 val newQuantity = (item.quantity - 1.0).coerceAtLeast(0.0)
                 repository.updateItem(item.copy(quantity = newQuantity))
-                
+
                 repository.insertConsumptionRecord(
                     ConsumptionRecord(
                         itemId = item.id,
@@ -114,7 +115,7 @@ class PantryViewModel(private val repository: PantryRepository) : ViewModel() {
             repository.clearHistory()
         }
     }
-    
+
     suspend fun getItemById(id: Long): PantryItem? {
         return repository.getItemById(id)
     }
@@ -142,5 +143,105 @@ class PantryViewModel(private val repository: PantryRepository) : ViewModel() {
         viewModelScope.launch {
             repository.updateShoppingListStatus(item.id, !item.isOnShoppingList)
         }
+    }
+
+    // ============== Meal State ==============
+    private val _selectedMealCategory = MutableStateFlow(MealCategory.OTHER)
+    val selectedMealCategory: StateFlow<MealCategory> = _selectedMealCategory
+
+    val allMealsWithIngredients: StateFlow<List<MealWithIngredients>> = repository.getAllMealsWithIngredients()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    val mealsByCategory: StateFlow<List<MealWithIngredients>> = combine(
+        allMealsWithIngredients,
+        _selectedMealCategory
+    ) { meals, category ->
+        meals.filter { it.meal.category == category }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    private val _mealOperationState = MutableStateFlow<MealOperationState>(MealOperationState.Idle)
+    val mealOperationState: StateFlow<MealOperationState> = _mealOperationState
+
+    // ============== Meal Methods ==============
+    fun createMeal(meal: Meal) {
+        viewModelScope.launch {
+            try {
+                repository.insertMeal(meal)
+                _mealOperationState.value = MealOperationState.Success("Mahlzeit erstellt")
+            } catch (e: Exception) {
+                _mealOperationState.value = MealOperationState.Error(e.message ?: "Fehler beim Erstellen")
+            }
+        }
+    }
+
+    fun updateMeal(meal: Meal) {
+        viewModelScope.launch {
+            try {
+                repository.updateMeal(meal)
+                _mealOperationState.value = MealOperationState.Success("Mahlzeit aktualisiert")
+            } catch (e: Exception) {
+                _mealOperationState.value = MealOperationState.Error(e.message ?: "Fehler beim Aktualisieren")
+            }
+        }
+    }
+
+    fun deleteMeal(meal: Meal) {
+        viewModelScope.launch {
+            try {
+                repository.deleteMeal(meal)
+                _mealOperationState.value = MealOperationState.Success("Mahlzeit gelöscht")
+            } catch (e: Exception) {
+                _mealOperationState.value = MealOperationState.Error(e.message ?: "Fehler beim Löschen")
+            }
+        }
+    }
+
+    suspend fun getMealWithIngredients(mealId: Long): MealWithIngredients? {
+        return repository.getMealWithIngredients(mealId)
+    }
+
+    fun addIngredientToMeal(ingredient: MealIngredient) {
+        viewModelScope.launch {
+            try {
+                repository.addIngredientToMeal(ingredient)
+                _mealOperationState.value = MealOperationState.Success("Zutat hinzugefügt")
+            } catch (e: Exception) {
+                _mealOperationState.value = MealOperationState.Error(e.message ?: "Fehler beim Hinzufügen der Zutat")
+            }
+        }
+    }
+
+    fun consumeMeal(mealId: Long) {
+        viewModelScope.launch {
+            _mealOperationState.value = MealOperationState.Loading
+
+            val result = repository.consumeMeal(mealId)
+            _mealOperationState.value = when (result) {
+                MealConsumptionResult.Success ->
+                    MealOperationState.Success("Mahlzeit verbraucht")
+                MealConsumptionResult.NotFound ->
+                    MealOperationState.Error("Mahlzeit nicht gefunden")
+                is MealConsumptionResult.InsufficientIngredients ->
+                    MealOperationState.InsufficientIngredients(result.missingIngredients)
+                is MealConsumptionResult.Error ->
+                    MealOperationState.Error(result.message)
+            }
+        }
+    }
+
+    fun setMealCategory(category: MealCategory) {
+        _selectedMealCategory.value = category
+    }
+
+    fun clearMealOperationState() {
+        _mealOperationState.value = MealOperationState.Idle
     }
 }

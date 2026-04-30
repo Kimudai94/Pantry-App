@@ -28,7 +28,8 @@ fun InventoryListScreen(
     onAddItemClick: () -> Unit,
     onItemClick: (Long) -> Unit,
     onShoppingListClick: () -> Unit,
-    onHistoryClick: () -> Unit
+    onHistoryClick: () -> Unit,
+    onMealsClick: () -> Unit = {}
 ) {
     val items by viewModel.pantryItems.collectAsState()
     val sortOption by viewModel.sortOption.collectAsState()
@@ -44,6 +45,9 @@ fun InventoryListScreen(
             TopAppBar(
                 title = { Text("PantryPure") },
                 actions = {
+                    IconButton(onClick = onMealsClick) {
+                        Icon(Icons.Default.Restaurant, contentDescription = "Mahlzeiten")
+                    }
                     IconButton(onClick = onHistoryClick) {
                         Icon(Icons.Default.History, contentDescription = "History")
                     }
