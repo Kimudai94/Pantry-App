@@ -1,0 +1,11 @@
+stateDiagram-v2
+    [*] --> ShoppingList
+    ShoppingList --> FilteredView: "Zeige nur isOnShoppingList == true"
+    FilteredView --> Shopping: "Artikel eingekauft"
+
+    state "Einkaufsvorgang" as Shopping {
+        MarkAsBought --> SetQuantity: "Neue Menge eingeben"
+        SetQuantity --> ResetShoppingFlag: "isOnShoppingList = false"
+    }
+
+    Shopping --> PantryList: "Bestand aktualisiert"
