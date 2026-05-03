@@ -1,0 +1,41 @@
+stateDiagram-v2
+InventoryListScreen --> MainActivity: "Neues Element (+)"
+    MainActivity --> PantryNavigation: "navigate(Screen.AddEditItem)"
+    PantryNavigation --> AddEditDialog: "call AddEditItemScreen"
+    AddEditDialog --> InventoryListScreen: "State Update (Flow)"
+    state AddEditDialog {
+        AddEditItemScreen --> PantryViewModel: "addItem(PantryItem)"
+        PantryViewModel --> PantryRepository: "insertItem(PantryItem)"
+        PantryRepository --> PantryDao: "insertItem(PantryItem)"
+        PantryDao --> PantryDatabase: "insertAndReturnId(PantryItem)"
+    }
+
+InventoryListScreen --> ItemDetailScreen: "onItemClick"
+    MainActivity --> PantryNavigation: "navigate(Screen.AddEditItem)"
+    PantryNavigation --> AddEditDialog: "call AddEditItemScreen"
+    AddEditDialog --> InventoryListScreen: "State Update (Flow)"
+    state AddEditDialog {
+        AddEditItemScreen --> PantryViewModel: "addItem(PantryItem)"
+        PantryViewModel --> PantryRepository: "updateItem(PantryItem)"
+        PantryRepository --> PantryDao: "updateItem(PantryItem)"
+        PantryDao --> PantryDatabase: "insertAndReturnId()"
+    }
+
+
+ItemDetailScreen --> ConsumeDialog: "onConsumeClick"
+
+state ConsumeDialog {
+[*] --> consumeOne: "ViewModel.consumeOne(item)"
+consumeOne --> UpdateEntity: "PantryItem.quantity - 1"
+
+state UpdateEntity {
+[*] --> CheckThreshold: "quantity <= quantityThreshold"
+CheckThreshold --> ShoppingListTrue: "isOnShoppingList = true"
+CheckThreshold --> KeepStatus: "Keine Änderung"
+}
+
+UpdateEntity --> insertConsumption: "ConsumptionRecordDao.insert()"
+}
+
+ConsumeDialog --> ItemDetailScreen: "Dismiss / Success"
+ItemDetailScreen --> InventoryListScreen: "BackStack"

@@ -1,0 +1,31 @@
+# This is an example configuration file
+# To learn more, see the full config.yaml reference: https://docs.continue.dev/reference
+
+name: Example Config
+version: 1.0.0
+schema: v1
+
+# Define which models can be used
+# https://docs.continue.dev/customization/models
+models:
+  - name: Local Model
+    provider: openai
+    model: qwen3-14b-code-reasoning-conversational
+    apiBase: http://localhost:1234/v1
+    apiKey: lm-studio
+    roles: [chat, edit, apply, embed, autocomplete]
+    context:
+      - provider: file
+      - provider: code
+      - provider: diff
+      - provider: terminal
+      - provider: problems
+      - provider: tree
+      - provider: folder
+      - provider: codebase
+      - provider: repo-map
+
+# MCP Servers that Continue can access
+# https://docs.continue.dev/customization/mcp-tools
+mcpServers:
+  - uses: anthropic/memory-mcp
