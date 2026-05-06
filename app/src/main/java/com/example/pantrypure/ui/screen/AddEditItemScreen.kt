@@ -27,9 +27,11 @@ fun AddEditItemScreen(
     var quantity by remember { mutableStateOf("") }
     var unit by remember { mutableStateOf(PantryUnit.PIECES) }
     var category by remember { mutableStateOf("") }
+    var location by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     var expiryDate by remember { mutableStateOf<Long?>(null) }
     var expiryThresholdDays by remember { mutableStateOf("3") }
+    var quantityThreshold by remember { mutableStateOf("1") }
     
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -41,9 +43,11 @@ fun AddEditItemScreen(
                 quantity = it.quantity.toString()
                 unit = it.unit
                 category = it.category
+                location = it.location
                 notes = it.notes
                 expiryDate = it.expiryDate
                 expiryThresholdDays = it.expiryThresholdDays.toString()
+                quantityThreshold = it.quantityThreshold.toString()
             }
         }
     }
@@ -122,6 +126,13 @@ fun AddEditItemScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            OutlinedTextField(
+                value = location,
+                onValueChange = { location = it },
+                label = { Text("Location") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
             val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
             OutlinedTextField(
                 value = expiryDate?.let { sdf.format(Date(it)) } ?: "",
@@ -154,6 +165,16 @@ fun AddEditItemScreen(
                 )
             )
 
+            OutlinedTextField(
+                value = quantityThreshold,
+                onValueChange = { if (it.isEmpty() || it.toDoubleOrNull() != null) quantityThreshold = it },
+                label = { Text("Low Quantity Threshold") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+                )
+            )
+
             Button(
                 onClick = {
                     val item = PantryItem(
@@ -162,9 +183,11 @@ fun AddEditItemScreen(
                         quantity = quantity.toDoubleOrNull() ?: 0.0,
                         unit = unit,
                         category = category,
+                        location = location,
                         notes = notes,
                         expiryDate = expiryDate,
-                        expiryThresholdDays = expiryThresholdDays.toIntOrNull() ?: 3
+                        expiryThresholdDays = expiryThresholdDays.toIntOrNull() ?: 3,
+                        quantityThreshold = quantityThreshold.toDoubleOrNull() ?: 1.0
                     )
                     if (item.id == 0L) {
                         viewModel.addItem(item)

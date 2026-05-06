@@ -12,7 +12,7 @@ import com.example.pantrypure.data.model.ConsumptionRecord
 import com.example.pantrypure.data.model.Meal
 import com.example.pantrypure.data.model.MealIngredient
 
-@Database(entities = [PantryItem::class, ConsumptionRecord::class, Meal::class, MealIngredient::class], version = 5, exportSchema = false)
+@Database(entities = [PantryItem::class, ConsumptionRecord::class, Meal::class, MealIngredient::class], version = 6, exportSchema = false)
 @TypeConverters(PantryTypeConverters::class)
 abstract class PantryDatabase : RoomDatabase() {
     abstract fun pantryDao(): PantryDao

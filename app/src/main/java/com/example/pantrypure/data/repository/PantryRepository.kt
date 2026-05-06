@@ -23,7 +23,15 @@ class PantryRepository(
 
     suspend fun insertItem(item: PantryItem) = pantryDao.insertItem(item)
 
-    suspend fun updateItem(item: PantryItem) = pantryDao.updateItem(item)
+    suspend fun updateItem(item: PantryItem) {
+        val updatedItem = item.copy(quantity = 0.0.coerceAtLeast(item.quantity))
+        
+        if (updatedItem.quantity == 0.0 && updatedItem.id != 0L) {
+            deleteItem(updatedItem)
+        } else {
+            pantryDao.updateItem(updatedItem)
+        }
+    }
 
     suspend fun deleteItem(item: PantryItem) = pantryDao.deleteItem(item)
 

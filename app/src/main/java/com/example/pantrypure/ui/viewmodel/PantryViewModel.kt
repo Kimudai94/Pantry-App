@@ -89,6 +89,9 @@ class PantryViewModel(private val repository: PantryRepository) : ViewModel() {
         if (item.quantity > 0) {
             viewModelScope.launch {
                 val newQuantity = (item.quantity - 1.0).coerceAtLeast(0.0)
+                if (newQuantity <= item.quantityThreshold && !item.isOnShoppingList) {
+                  toggleShoppingListStatus(item)
+                }
                 repository.updateItem(item.copy(quantity = newQuantity))
 
                 repository.insertConsumptionRecord(

@@ -54,42 +54,6 @@ fun InventoryListScreen(
                     IconButton(onClick = onShoppingListClick) {
                         Icon(Icons.Default.ShoppingCart, contentDescription = "Shopping List")
                     }
-                    IconButton(onClick = { showSortMenu = true }) {
-                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
-                    }
-                    IconButton(onClick = { showFilterMenu = true }) {
-                        Icon(Icons.Default.FilterList, contentDescription = "Filter")
-                    }
-                    
-                    DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                        SortOption.entries.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text("Sort by ${option.name.lowercase().replace("_", " ")}") },
-                                onClick = {
-                                    viewModel.setSortOption(option)
-                                    showSortMenu = false
-                                },
-                                leadingIcon = {
-                                    if (sortOption == option) Icon(Icons.Default.Check, contentDescription = null)
-                                }
-                            )
-                        }
-                    }
-                    
-                    DropdownMenu(expanded = showFilterMenu, onDismissRequest = { showFilterMenu = false }) {
-                        FilterOption.entries.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text("Filter: ${option.name.lowercase().replace("_", " ")}") },
-                                onClick = {
-                                    viewModel.setFilterOption(option)
-                                    showFilterMenu = false
-                                },
-                                leadingIcon = {
-                                    if (filterOption == option) Icon(Icons.Default.Check, contentDescription = null)
-                                }
-                            )
-                        }
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -110,13 +74,55 @@ fun InventoryListScreen(
                 onValueChange = { viewModel.setSearchQuery(it) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 placeholder = { Text("Search items...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(end = 4.dp)
+                    ) {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                        IconButton(onClick = { showSortMenu = true }) {
+                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
+                        }
+                        DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                            SortOption.entries.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text("Sort by ${option.name.lowercase().replace("_", " ")}") },
+                                    onClick = {
+                                        viewModel.setSortOption(option)
+                                        showSortMenu = false
+                                    },
+                                    leadingIcon = {
+                                        if (sortOption == option) Icon(Icons.Default.Check, contentDescription = null)
+                                    }
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(4.dp))
+                        IconButton(onClick = { showFilterMenu = true }) {
+                            Icon(Icons.Default.FilterList, contentDescription = "Filter")
+                        }
+                        DropdownMenu(expanded = showFilterMenu, onDismissRequest = { showFilterMenu = false }) {
+                            FilterOption.entries.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text("Filter: ${option.name.lowercase().replace("_", " ")}") },
+                                    onClick = {
+                                        viewModel.setFilterOption(option)
+                                        showFilterMenu = false
+                                    },
+                                    leadingIcon = {
+                                        if (filterOption == option) Icon(Icons.Default.Check, contentDescription = null)
+                                    }
+                                )
+                            }
                         }
                     }
                 },
@@ -138,6 +144,7 @@ fun InventoryListScreen(
                     )
                 }
             }
+
         }
     }
 
@@ -208,7 +215,7 @@ fun PantryItemCard(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "${item.quantity} ${item.unit.label} • ${item.category}",
+                    text = "${item.quantity} ${item.unit.label} • ${item.category} • ${item.location}",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 item.expiryDate?.let { expiry ->

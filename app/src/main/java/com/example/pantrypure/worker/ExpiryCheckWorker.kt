@@ -22,10 +22,18 @@ class ExpiryCheckWorker(
             val thresholdMillis = item.expiryThresholdDays * 24 * 60 * 60 * 1000L
             item.expiryDate < (now + thresholdMillis)
         }
+        val lowThresholdCount = items.count { item ->
+            item.quantity <= item.quantityThreshold
+        }
 
         if (expiringSoonOrOverdueCount > 0) {
             val notificationHelper = NotificationHelper(applicationContext)
             notificationHelper.showExpiryNotification(expiringSoonOrOverdueCount)
+        }
+
+        if (lowThresholdCount > 0) {
+            val notificationHelper = NotificationHelper(applicationContext)
+            notificationHelper.showLowThresholdNotification(lowThresholdCount)
         }
 
         return Result.success()
