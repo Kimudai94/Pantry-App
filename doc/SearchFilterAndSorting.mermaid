@@ -1,0 +1,28 @@
+graph TD
+QQ[*] --> A["📋 InventoryListScreen"]
+    --> B["🔍 Fill Search Bar"]
+    --> C["setSearchQuery"]
+    --> D["🔄 combine() triggers"]
+    --> E["Apply ALL filters & sorts"]
+    --> F["Update pantryItems StateFlow"]
+    --> G["📱 UI Recomposes"]
+    
+A --> H["📊 Filter Dropdown"]
+    --> I["Select Filter Option"]
+    -->|All<br>Overdue<br>Expiring Soon| J["ViewModel.filterOption = selected"]
+    --> D
+    
+A --> R["🔤 Sort Dropdown"]
+    --> S["Select Sort Option"]
+    -->|Name<br>Expiry Date| T["ViewModel.sortOption = selected"]
+    --> D
+
+QQ --> Z2["🏷️ Category Filtering<br/>MealsListScreen"]
+    --> AA["Show Category Tabs<br/>Breakfast, Lunch, Dinner,<br/>Snack, Other"]
+    --> AB["User clicks category"]
+    --> AC["ViewModel.selectedMealCategory = chosen"]
+    --> AD["🔄 Flow filters allMeals"]
+    --> AE["Filter: meal.category == selected"]
+    --> AF["Update mealsInCategory StateFlow"]
+    --> AG["📱 UI shows filtered meals"]
+    

@@ -1,0 +1,27 @@
+graph TD
+    A["📱 App Launch"]
+    
+    A --> B["System loads MainActivity"]
+     --> C["onCreate() called"]
+     --> D["Init PantryViewModel<br/>with PantryViewModelFactory"]
+     --> E["Set Start Destination:<br/>Screen.InventoryList.route"]
+     --> F["📊 InventoryListScreen<br/>First Screen Shown"]
+     --> G{?}
+    
+    G -->|Add/Edit Item| H["navigate to<br/>Screen.AddEditItem.route<br/>with itemId=0/{id}"]
+    H --> L["UpdatePantry.mermaid"]
+
+    G -->|View Meals| I["navigate to<br/>Screen.MealsList.route"]
+    I --> N["MealsListScreen"]
+     -->|View Meal<br>Edit Meal<br>Add Ingredient| O["navigate to<br>-MealDetailScreen<br>-AddEditMealScreen<br>-MealIngredientScreen"]
+     --> N
+
+    G -->|View Shopping| J["navigate to<br/>Screen.ShoppingList.route"]
+    --> S["UpdateShoppingList.mermaid"]
+
+    G -->|View History| K["navigate to<br/>Screen.History.route"]
+     --> U["ConsumptionHistory.mermaid"]
+
+    style A fill:#e3f2fd
+    style F fill:#e3f2fd
+    style G fill:#f3e5f5

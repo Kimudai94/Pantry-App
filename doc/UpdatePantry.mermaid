@@ -1,41 +1,35 @@
-stateDiagram-v2
-InventoryListScreen --> MainActivity: "Neues Element (+)"
-    MainActivity --> PantryNavigation: "navigate(Screen.AddEditItem)"
-    PantryNavigation --> AddEditDialog: "call AddEditItemScreen"
-    AddEditDialog --> InventoryListScreen: "State Update (Flow)"
-    state AddEditDialog {
-        AddEditItemScreen --> PantryViewModel: "addItem(PantryItem)"
-        PantryViewModel --> PantryRepository: "insertItem(PantryItem)"
-        PantryRepository --> PantryDao: "insertItem(PantryItem)"
-        PantryDao --> PantryDatabase: "insertAndReturnId(PantryItem)"
-    }
-
-InventoryListScreen --> ItemDetailScreen: "onItemClick"
-    MainActivity --> PantryNavigation: "navigate(Screen.AddEditItem)"
-    PantryNavigation --> AddEditDialog: "call AddEditItemScreen"
-    AddEditDialog --> InventoryListScreen: "State Update (Flow)"
-    state AddEditDialog {
-        AddEditItemScreen --> PantryViewModel: "addItem(PantryItem)"
-        PantryViewModel --> PantryRepository: "updateItem(PantryItem)"
-        PantryRepository --> PantryDao: "updateItem(PantryItem)"
-        PantryDao --> PantryDatabase: "insertAndReturnId()"
-    }
-
-
-ItemDetailScreen --> ConsumeDialog: "onConsumeClick"
-
-state ConsumeDialog {
-[*] --> consumeOne: "ViewModel.consumeOne(item)"
-consumeOne --> UpdateEntity: "PantryItem.quantity - 1"
-
-state UpdateEntity {
-[*] --> CheckThreshold: "quantity <= quantityThreshold"
-CheckThreshold --> ShoppingListTrue: "isOnShoppingList = true"
-CheckThreshold --> KeepStatus: "Keine Änderung"
-}
-
-UpdateEntity --> insertConsumption: "ConsumptionRecordDao.insert()"
-}
-
-ConsumeDialog --> ItemDetailScreen: "Dismiss / Success"
-ItemDetailScreen --> InventoryListScreen: "BackStack"
+graph TD
+    A["📋 InventoryListScreen"] 
+    
+    A -->|"Add Item"| B["📝 AddEditItemScreen"]
+    A -->|"Edit Item"| B
+    
+    B -->|"Validate"| C{Valid?}
+    C -->|"❌ No"| D["⚠️ Error Message"]
+    D --> B
+    
+    C -->|"✅ Yes"| E["🔄 PantryViewModel.<br>addItem/updateItem"]
+    E --> F["📊 PantryRepository.<br>insertItem/updateItem"]
+    F --> G["🗄️ PantryDAO.<br>insertItem/updateItem"]
+    G --> H["💾 Room Database"]
+    H --> I["✅ Success"]
+    
+    I --> J["🔁 Flow updates pantryItems"]
+    J --> K["📱 Recompose UI"]
+    K --> A
+    
+    B -->|"Cancel"| A
+    
+    A -->|"Consume"| L["🍽️ consumeOne()"]
+    L --> M{Quantity > 0?}
+    M -->|No| N["⚠️ Already consumed"]
+    N --> A
+    
+    M -->|Yes| O["➖ quantity - 1"]
+    O --> P["📝 Insert ConsumptionRecord"]
+    P --> Q{Quantity ≤ Threshold?}
+    Q -->|Yes| R["🛒 Add to Shopping List"]
+    Q -->|No| S["✅ Keep status"]
+    R --> T["🔄 Update UI"]
+    S --> T
+    T --> A

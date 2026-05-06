@@ -1,0 +1,47 @@
+graph TD
+    QQ[*] --> A["🔍 MealDetailScreen<br/>View Recipe & Check if can cook"]
+    
+    A --> B["Load Meal + All Ingredients"]
+    --> C["For Each Ingredient<br/>Get required quantity & item name"]
+    --> D["🔄 Get Current Stock<br/>from PantryItem"]
+    --> I{All available?}
+    I -->|✅ Yes| J["🎉 CAN COOK"]
+    I -->|❌ No| K["⚠️ MISSING ITEMS"]
+    
+    J --> L["Show 'Cook Meal' Button"]
+    K --> M["Show Missing Items List"]
+    --> N["Click Button: 'Add Missing to Shopping'"]
+    --> O["Get missing pantry items"]
+    --> P["For each missing item:<br/>Set isOnShoppingList = true"]
+    --> Q["Repository.updateShoppingListStatus"]
+    --> R["💾 Update Database"]
+    --> S["✅ Added to Shopping List"]
+    --> A
+    
+    L -->|Click 'Cook'| T["👨‍🍳 Cook Meal<br/>Consume all ingredients"]
+    --> U["For each ingredient:<br/>Reduce pantry stock"]
+    --> V["Create ConsumptionRecord<br/>for each ingredient"]
+    --> W["💾 Update Database"]
+    --> X["✅ Meal cooked!"]
+    --> Y["Show Toast: Guten Appetit!"]
+    --> Z["🔄 Update MealsListScreen"]
+    
+    QQ --> Z2["➕ Add Ingredient to Meal"]
+    --> AA["🔎 MealIngredientPickerScreen"]
+    --> AB["Search pantry items"]
+    --> AC["User selects item"]
+    --> AD["Enter required quantity"]
+    --> AE["Click 'Add to Meal'"]
+    --> AF["ViewModel.addIngredientToMeal"]
+    --> AG["Repository.addIngredientToMeal"]
+    --> AH["DAO.insertIngredient"]
+    --> AI["💾 Room Database"]
+    --> AJ["✅ Ingredient added"]
+    --> AK["🔁 Flow updates meal ingredients"]
+    --> AL["Back to AddEditMealScreen"]
+    --> AM["Show updated ingredients list"]
+    
+    style J fill:#c8e6c9
+    style K fill:#ffcdd2
+    style X fill:#c8e6c9
+    style AK fill:#c8e6c9
