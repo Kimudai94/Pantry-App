@@ -1,0 +1,38 @@
+erDiagram
+PANTRY_ITEM ||--o{ CONSUMPTION_RECORD : "erzeugt"
+PANTRY_ITEM ||--o{ MEAL_INGREDIENT : "wird verwendet in"
+MEAL ||--|{ MEAL_INGREDIENT : "besteht aus"
+
+PANTRY_ITEM {
+    long id PK
+    string name
+    double quantity
+    string unit
+    long expiryDate
+    int expiryThresholdDays
+    double quantityThreshold
+    boolean isOnShoppingList
+}
+
+CONSUMPTION_RECORD {
+    long id PK
+    long itemId FK
+    string itemName
+    double quantityConsumed
+    string unit
+    long timestamp
+}
+
+MEAL {
+    long id PK
+    string name
+    string category "Enum: BREAKFAST, LUNCH, DINNER, etc."
+    string instructions
+}
+
+MEAL_INGREDIENT {
+    long id PK
+    long mealId FK
+    long pantryItemId FK
+    double requiredQuantity
+}

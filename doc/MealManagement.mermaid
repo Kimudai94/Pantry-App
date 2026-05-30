@@ -1,0 +1,37 @@
+graph TD
+    A["🍽️ MealsListScreen"]
+    
+    A -->|"Add/Edit Meal"| B["📝 AddEditMealScreen"]    
+    --> C["User fills recipe form"]
+    --> D{Save?}
+    -->|Cancel +<br>Discard changes| A
+    D -->|Save| G{Valid?}
+    -->|No ⚠️ Show error| C
+    
+    G -->|Yes| I["ViewModel.addMeal<br>ViewModel.updateMeal"]
+    --> L["Repository.insertMeal"]
+    --> M["DAO.insertMeal / updateMeal"]
+    --> N["💾 Room Database"]
+    --> O["✅ Meal saved"]
+    --> P["🔁 Flow updates allMeals"]
+    --> Q["📱 Recompose UI"]
+    --> A
+    
+    A -->|"View Details"| R["🔍 MealDetailScreen"]
+    --> S["Load Meal + Ingredients"]
+    --> T{User Action?}
+    -->|Edit| B
+    T -->|Delete| U{"Confirmation?"}
+    -->|No| R
+    U -->|Yes| V["ViewModel.deleteMeal"]
+    --> W["Repository.deleteMeal"]
+    --> X["DAO.deleteMeal"]
+    --> N
+    X --> Y["✅ Meal deleted"]
+    --> A
+    T -->|View Ingredients| AA["Show MealIngredientPickerScreen"]
+    
+    style A fill:#e3f2fd
+    style B fill:#f3e5f5
+    style N fill:#c8e6c9
+    style O fill:#c8e6c9

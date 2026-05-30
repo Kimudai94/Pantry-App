@@ -1,0 +1,14 @@
+graph TD
+    A[Start: Meal Screen] --> B{Mahlzeit wählen}
+    B --> C[Rezept-Details ansehen]
+    C --> D{Zutaten prüfen}
+
+    D -- "Nicht genug Bestand" --> E[Warnung: Fehlende Zutaten]
+    D -- "Bestand ok" --> F[Button: 'Mahlzeit kochen']
+
+    F --> G[Bestände aller Zutaten reduzieren]
+    G --> H[Verbrauchshistorie für alle Zutaten erstellen]
+    H --> I[Erfolg: 'Guten Appetit!']
+
+    E --> J[Fehlende Artikel auf Einkaufsliste setzen]
+    J --> B

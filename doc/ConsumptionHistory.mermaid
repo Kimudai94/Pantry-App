@@ -1,0 +1,32 @@
+graph TD
+    A["📊 HistoryScreen<br/>Consumption Tracking"]
+    
+    A --> B["Load ConsumptionRecords"]
+    --> C["repository.getConsumptionHistory()"]
+    --> D["DAO Query: SELECT * FROM consumption_records<br/>ORDER BY timestamp DESC"]
+    --> E["💾 Room Database"]
+    --> F["Flow emits List of Records"]
+    
+    --> G["🔁 collectAsState in UI"]
+    --> H["Display Records<br/>Newest first"]
+    --> I["For each ConsumptionRecord:<br/>ItemName, Quantity, Unit, Timestamp"]
+    --> J["Show formatted:<br/>Tomato: 1 PIECE - Today 14:30"]
+    
+    --> K["📊 Calculate Stats"]
+    --> L["Total consumed this week"]
+    --> O["Display Summary<br/>e.g. '23 items this week'"]
+    
+    A --> P["🗑️ Clear History Button"]
+    --> Q{Dialog Confirm?}
+    Q -->|Cancel| A
+    Q -->|Yes| R["ViewModel.clearHistory"]
+    --> S["Repository.clearHistory()"]
+    --> T["DAO: DELETE FROM consumption_records"]
+    --> E
+    T --> U["✅ All records deleted"]
+    --> V["🔁 Flow emits empty list"]
+    --> W["📱 UI shows: 'No history'"]
+    
+    style A fill:#e3f2fd
+    style O fill:#fff9c4
+    style U fill:#c8e6c9

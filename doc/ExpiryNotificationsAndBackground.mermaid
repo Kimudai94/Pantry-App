@@ -1,0 +1,39 @@
+graph TD
+    A["🚀 App Startup<br/>PantryPureApplication.onCreate"]
+    --> B["Initialize Database"]
+    --> C["Initialize Repository"]
+    --> D["Create NotificationChannel"]
+    --> E["Schedule ExpiryCheckWorker"]
+    --> F["WorkManager.enqueueUniquePeriodicWork"]
+    --> G["Frequency: 1 day"]
+    F --> H["Constraints: requiresBatteryNotLow"]
+    
+    G --> I["⏰ ExpiryCheckWorker Triggers"]
+    --> K["- Query all PantryItems<br>- Calculate expiry status"]
+    --> M{Has items<br/>expiring?}
+    
+    -->|No| N["✅ All items safe"]
+    M -->|Yes| O["Get expiring items<br/>expiryDate < now + threshold"]
+    
+    --> P["🔔 Send Notification<br>NotificationHelper.showExpiryNotification"]
+    --> R["Notification: 'X items expiring'"]
+    --> S["User clicks notification"]
+    --> T["Navigate to ExpiryWarningsScreen"]
+    --> U["Show expiring items list<br/>with warning level"]
+    --> V{Warning Level?}
+    -->|🔴 EXPIRED| W["Items past expiry date"]
+    V -->|🟠 URGENT| X["Items expiring < 24h"]
+    V -->|🟡 SOON| Y["Items expiring < threshold"]
+    
+    W --> Z["User can:<br/>Edit, Delete, or Move to Shopping"]
+    X --> Z
+    Y --> Z
+    
+    Z --> AA["Action triggers<br/>updateItem or deleteItem"]
+    --> AB["Database updated"]
+    
+    style A fill:#e3f2fd
+    style I fill:#fff9c4
+    style P fill:#ffcdd2
+    style R fill:#ffcdd2
+    style Z fill:#e3f2fd

@@ -1,0 +1,11 @@
+stateDiagram-v2
+    [*] --> ShoppingListScreen: "User öffnet Einkaufslisten-Screen"
+    ShoppingListScreen --> Shopping: "Artikel eingekauft"
+
+    state "Einkaufsvorgang" as Shopping {
+        [*] --> AddEditItemScreen: "Neue Menge eingeben"
+        AddEditItemScreen --> UpdatePantry: "update database"
+        UpdatePantry --> [*]: "isOnShoppingList = false"
+    }
+
+    Shopping --> ShoppingListScreen: "Bestand aktualisiert"
