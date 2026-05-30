@@ -123,7 +123,7 @@ Detaillierte Dokumentation aller App-Features, Screens, ViewModels und deren API
 
 #### MealDetailScreen
 - **Route**: `meal_detail/{mealId}`
-- **Purpose**: View meal recipe and ingredients, check if can be prepared
+- **Purpose**: View meal recipe and ingredients, check if it can be prepared
 - **ViewModel**: `PantryViewModel`
 - **Load Data**:
   ```kotlin

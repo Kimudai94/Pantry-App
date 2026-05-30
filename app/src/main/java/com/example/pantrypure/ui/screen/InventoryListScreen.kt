@@ -1,5 +1,6 @@
 package com.example.pantrypure.ui.screen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +19,7 @@ import com.example.pantrypure.data.model.PantryItem
 import com.example.pantrypure.ui.viewmodel.FilterOption
 import com.example.pantrypure.ui.viewmodel.PantryViewModel
 import com.example.pantrypure.ui.viewmodel.SortOption
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -36,6 +38,7 @@ fun InventoryListScreen(
     val filterOption by viewModel.filterOption.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
 
+    val scope = rememberCoroutineScope()
     var itemToDelete by remember { mutableStateOf<PantryItem?>(null) }
     var showSortMenu by remember { mutableStateOf(false) }
     var showFilterMenu by remember { mutableStateOf(false) }
@@ -156,8 +159,10 @@ fun InventoryListScreen(
             text = { Text("Are you sure you want to delete '${item.name}' from your pantry?") },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.deleteItem(item)
-                    itemToDelete = null
+                    scope.launch {
+                        viewModel.deleteItem(item)
+                        itemToDelete = null
+                    }
                 }) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)
                 }
@@ -189,17 +194,22 @@ fun PantryItemCard(
         else -> null
     }
 
-    val statusColor = when (status) {
-        "OVERDUE" -> Color.Red
-        "EXPIRING SOON" -> Color(0xFFFFA000) // Dark Amber
-        else -> MaterialTheme.colorScheme.secondary
+    val cardContainerColor = when (status) {
+        "OVERDUE" -> Color.Red.copy(alpha = 0.15f)      // Leichtes Rot
+        "EXPIRING SOON" -> Color(0xFFFFA000).copy(alpha = 0.15f) // Leichtes Orange
+        else -> MaterialTheme.colorScheme.surfaceVariant   // Standardfarbe
     }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = cardContainerColor
+        ),
+        // Optional: Ein farbiger Rand für noch mehr Deutlichkeit
+        border = if (status != null) BorderStroke(1.dp, cardContainerColor.copy(alpha = 0.5f)) else null
     ) {
         Row(
             modifier = Modifier
@@ -223,24 +233,8 @@ fun PantryItemCard(
                     val expiryString = sdf.format(Date(expiry))
                     Text(
                         text = "Expires: $expiryString",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (status == "OVERDUE") Color.Red else Color.Unspecified
+                        style = MaterialTheme.typography.bodySmall
                     )
-                }
-                status?.let {
-                    Surface(
-                        color = statusColor.copy(alpha = 0.1f),
-                        shape = MaterialTheme.shapes.small,
-                        modifier = Modifier.padding(top = 4.dp)
-                    ) {
-                        Text(
-                            text = it,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = statusColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
                 }
             }
             IconButton(onClick = onDeleteClick) {

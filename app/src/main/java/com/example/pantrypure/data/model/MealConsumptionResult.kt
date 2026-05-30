@@ -10,7 +10,7 @@ sealed class MealConsumptionResult {
 }
 
 data class MissingIngredient(
-    val pantryItemId: Long,
+    val pantryItemId: Long? = null,
     val itemName: String,
     val required: Double,
     val available: Double,

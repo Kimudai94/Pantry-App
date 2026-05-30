@@ -9,7 +9,7 @@ data class Meal(
     val id: Long = 0,
     val name: String,
     val description: String = "",
-    val category: MealCategory,
+    val category: MealCategory = MealCategory.OTHER,
     val createdDate: Long = System.currentTimeMillis(),
     val notes: String = ""
 )

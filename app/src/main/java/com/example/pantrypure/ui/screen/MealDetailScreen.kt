@@ -12,7 +12,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.example.pantrypure.data.model.*
+import com.example.pantrypure.data.model.MealIngredientWithName
+import com.example.pantrypure.data.model.MealWithIngredients
+import com.example.pantrypure.data.model.MissingIngredient
+import com.example.pantrypure.data.util.UnitConverter
 import com.example.pantrypure.ui.viewmodel.PantryViewModel
 import com.example.pantrypure.ui.viewmodel.MealOperationState
 
@@ -29,7 +32,6 @@ fun MealDetailScreen(
     var showInsufficientDialog by remember { mutableStateOf(false) }
     var insufficientIngredients by remember { mutableStateOf<List<MissingIngredient>>(emptyList()) }
     val operationState by viewModel.mealOperationState.collectAsState()
-    var pantryItems by remember { mutableStateOf<Map<Long, PantryItem>>(emptyMap()) }
 
     // Load meal details
     LaunchedEffect(mealId) {
@@ -38,9 +40,6 @@ fun MealDetailScreen(
 
     // Collect pantry items for availability check
     val allPantryItems by viewModel.pantryItems.collectAsState()
-    LaunchedEffect(allPantryItems) {
-        pantryItems = allPantryItems.associateBy { it.id }
-    }
 
     // Handle operation feedback
     LaunchedEffect(operationState) {
@@ -108,9 +107,18 @@ fun MealDetailScreen(
             }
 
             items(mealWithIngredients?.ingredients ?: emptyList()) { ingredient ->
+                val totalAvailable = allPantryItems
+                    .filter { it.name.equals(ingredient.pantryItemName, ignoreCase = true) }
+                    .sumOf { item ->
+                        try {
+                            UnitConverter.convert(item.quantity, item.unit, ingredient.requiredUnit)
+                        } catch (e: Exception) {
+                            0.0
+                        }
+                    }
                 IngredientAvailabilityCard(
                     ingredient = ingredient,
-                    availableQuantity = pantryItems[ingredient.pantryItemId]?.quantity ?: 0.0
+                    availableQuantity = totalAvailable
                 )
             }
 

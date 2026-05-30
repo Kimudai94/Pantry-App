@@ -21,7 +21,7 @@ import androidx.room.Relation
             entity = PantryItem::class,
             parentColumns = ["id"],
             childColumns = ["pantryItemId"],
-            onDelete = ForeignKey.CASCADE
+            onDelete = ForeignKey.SET_NULL
         )
     ],
     indices = [
@@ -33,7 +33,8 @@ data class MealIngredient(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val mealId: Long,
-    val pantryItemId: Long,
+    val ingredientName: String,
+    val pantryItemId: Long? = null,
     val requiredQuantity: Double,
     val requiredUnit: PantryUnit
 )
@@ -62,14 +63,17 @@ data class MealIngredientWithName(
     @ColumnInfo(name = "mealId")
     val mealId: Long = 0,
     @ColumnInfo(name = "pantryItemId")
-    val pantryItemId: Long = 0,
+    val pantryItemId: Long? = null,
     @ColumnInfo(name = "requiredQuantity")
     val requiredQuantity: Double = 0.0,
     @ColumnInfo(name = "requiredUnit")
     val requiredUnit: PantryUnit = PantryUnit.PIECES,
-    @ColumnInfo(name = "pantryItemName")
-    val pantryItemName: String = ""
-)
+    @ColumnInfo(name = "ingredientName")
+    val ingredientName: String = ""
+) {
+    // For backward compatibility with code using pantryItemName
+    val pantryItemName: String get() = ingredientName
+}
 
 /**
  * Alias for backward compatibility

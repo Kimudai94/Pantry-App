@@ -9,14 +9,22 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.pantrypure.ui.theme.PantryPureTheme
 import com.example.pantrypure.data.model.PantryItem
 import com.example.pantrypure.data.model.PantryUnit
 import com.example.pantrypure.ui.viewmodel.PantryViewModel
+import com.example.pantrypure.util.NumberMode
+import com.example.pantrypure.util.NumberSpinnerFlexible
+import com.example.pantrypure.util.PantryDropdownSelector
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.roundToInt
 
-@OptIn(ExperimentalMaterial3Api::class)
+val CATEGORIES = listOf("Food", "Beverage", "Cleaning", "Hygiene", "Other")
+val LOCATIONS = listOf("Fridge", "Pantry", "Freezer", "Cellar", "Shelf")
 @Composable
 fun AddEditItemScreen(
     viewModel: PantryViewModel,
@@ -26,14 +34,13 @@ fun AddEditItemScreen(
     var name by remember { mutableStateOf("") }
     var quantity by remember { mutableStateOf("") }
     var unit by remember { mutableStateOf(PantryUnit.PIECES) }
-    var category by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf(CATEGORIES[0]) }
+    var location by remember { mutableStateOf(LOCATIONS[0]) }
     var notes by remember { mutableStateOf("") }
     var expiryDate by remember { mutableStateOf<Long?>(null) }
-    var expiryThresholdDays by remember { mutableStateOf("3") }
-    var quantityThreshold by remember { mutableStateOf("1") }
-    
-    var showDatePicker by remember { mutableStateOf(false) }
+    var expiryThresholdDays by remember { mutableIntStateOf(3) }
+    var quantityThreshold by remember { mutableDoubleStateOf(1.0) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(itemId) {
         if (itemId != null && itemId != -1L) {
@@ -46,16 +53,90 @@ fun AddEditItemScreen(
                 location = it.location
                 notes = it.notes
                 expiryDate = it.expiryDate
-                expiryThresholdDays = it.expiryThresholdDays.toString()
-                quantityThreshold = it.quantityThreshold.toString()
+                expiryThresholdDays = it.expiryThresholdDays
+                quantityThreshold = it.quantityThreshold
             }
         }
     }
 
+    AddEditItemContent(
+        name = name,
+        onNameChange = { name = it },
+        quantity = quantity,
+        onQuantityChange = { quantity = it },
+        unit = unit,
+        onUnitChange = { unit = it },
+        category = category,
+        onCategoryChange = { category = it },
+        location = location,
+        onLocationChange = { location = it },
+        notes = notes,
+        onNotesChange = { notes = it },
+        expiryDate = expiryDate,
+        onExpiryDateChange = { expiryDate = it },
+        expiryThresholdDays = expiryThresholdDays,
+        onExpiryThresholdDaysChange = { expiryThresholdDays = it },
+        quantityThreshold = quantityThreshold,
+        onQuantityThresholdChange = { quantityThreshold = it },
+        onSave = {
+            val newQuantity = ((quantity.toDoubleOrNull() ?: 0.0) * 100.0).roundToInt() / 100.0
+            val item = PantryItem(
+                id = if (itemId == null || itemId == -1L) 0 else itemId,
+                name = name,
+                quantity = newQuantity,
+                unit = unit,
+                category = category,
+                location = location,
+                notes = notes,
+                expiryDate = expiryDate,
+                expiryThresholdDays = expiryThresholdDays,
+                quantityThreshold = quantityThreshold
+            )
+            scope.launch {
+                if (item.id == 0L) {
+                    viewModel.addItem(item)
+                } else {
+                    viewModel.updateItem(item)
+                }
+                onNavigateBack()
+            }
+        },
+        onNavigateBack = onNavigateBack,
+        isEditMode = itemId != null && itemId != -1L
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddEditItemContent(
+    name: String,
+    onNameChange: (String) -> Unit,
+    quantity: String,
+    onQuantityChange: (String) -> Unit,
+    unit: PantryUnit,
+    onUnitChange: (PantryUnit) -> Unit,
+    category: String,
+    onCategoryChange: (String) -> Unit,
+    location: String,
+    onLocationChange: (String) -> Unit,
+    notes: String,
+    onNotesChange: (String) -> Unit,
+    expiryDate: Long?,
+    onExpiryDateChange: (Long?) -> Unit,
+    expiryThresholdDays: Int,
+    onExpiryThresholdDaysChange: (Int) -> Unit,
+    quantityThreshold: Double,
+    onQuantityThresholdChange: (Double) -> Unit,
+    onSave: () -> Unit,
+    onNavigateBack: () -> Unit,
+    isEditMode: Boolean
+) {
+    var showDatePicker by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (itemId == null || itemId == -1L) "Add Item" else "Edit Item") },
+                title = { Text(if (!isEditMode) "Add Item" else "Edit Item") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -75,17 +156,17 @@ fun AddEditItemScreen(
         ) {
             OutlinedTextField(
                 value = name,
-                onValueChange = { name = it },
+                onValueChange = onNameChange,
                 label = { Text("Name") },
                 modifier = Modifier.fillMaxWidth()
             )
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = quantity,
-                    onValueChange = { quantity = it },
-                    label = { Text("Quantity") },
-                    modifier = Modifier.weight(1f)
+                NumberSpinnerFlexible(
+                    NumberMode.DECIMAL,
+                    label = "Quantity",
+                    initial = quantity.toDoubleOrNull() ?: 1.0,
+                    onValueChange = { onQuantityChange(it.toString()) }
                 )
 
                 var expanded by remember { mutableStateOf(false) }
@@ -110,7 +191,7 @@ fun AddEditItemScreen(
                             DropdownMenuItem(
                                 text = { Text(pantryUnit.label) },
                                 onClick = {
-                                    unit = pantryUnit
+                                    onUnitChange(pantryUnit)
                                     expanded = false
                                 }
                             )
@@ -119,18 +200,18 @@ fun AddEditItemScreen(
                 }
             }
 
-            OutlinedTextField(
-                value = category,
-                onValueChange = { category = it },
-                label = { Text("Category") },
-                modifier = Modifier.fillMaxWidth()
+            PantryDropdownSelector(
+                label = "Category",
+                options = CATEGORIES,
+                selectedOption = category,
+                onOptionSelected = onCategoryChange
             )
 
-            OutlinedTextField(
-                value = location,
-                onValueChange = { location = it },
-                label = { Text("Location") },
-                modifier = Modifier.fillMaxWidth()
+            PantryDropdownSelector(
+                label = "Location",
+                options = LOCATIONS,
+                selectedOption = location,
+                onOptionSelected = onLocationChange
             )
 
             val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -149,53 +230,28 @@ fun AddEditItemScreen(
 
             OutlinedTextField(
                 value = notes,
-                onValueChange = { notes = it },
+                onValueChange = onNotesChange,
                 label = { Text("Notes") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3
             )
 
-            OutlinedTextField(
-                value = expiryThresholdDays,
-                onValueChange = { if (it.all { char -> char.isDigit() }) expiryThresholdDays = it },
-                label = { Text("Expiry Warning Threshold (Days)") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
-                )
+            NumberSpinnerFlexible(
+                mode = NumberMode.INTEGER,
+                label = "Expiry Threshold (days)",
+                initial = expiryThresholdDays.toDouble(),
+                onValueChange = { onExpiryThresholdDaysChange(it.toInt()) }
             )
 
-            OutlinedTextField(
-                value = quantityThreshold,
-                onValueChange = { if (it.isEmpty() || it.toDoubleOrNull() != null) quantityThreshold = it },
-                label = { Text("Low Quantity Threshold") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
-                )
+            NumberSpinnerFlexible(
+                mode = NumberMode.DECIMAL,
+                label = "Low Quantity Threshold",
+                initial = quantityThreshold,
+                onValueChange = onQuantityThresholdChange
             )
 
             Button(
-                onClick = {
-                    val item = PantryItem(
-                        id = if (itemId == null || itemId == -1L) 0 else itemId,
-                        name = name,
-                        quantity = quantity.toDoubleOrNull() ?: 0.0,
-                        unit = unit,
-                        category = category,
-                        location = location,
-                        notes = notes,
-                        expiryDate = expiryDate,
-                        expiryThresholdDays = expiryThresholdDays.toIntOrNull() ?: 3,
-                        quantityThreshold = quantityThreshold.toDoubleOrNull() ?: 1.0
-                    )
-                    if (item.id == 0L) {
-                        viewModel.addItem(item)
-                    } else {
-                        viewModel.updateItem(item)
-                    }
-                    onNavigateBack()
-                },
+                onClick = onSave,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = name.isNotBlank() && quantity.toDoubleOrNull() != null
             ) {
@@ -212,7 +268,7 @@ fun AddEditItemScreen(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    expiryDate = datePickerState.selectedDateMillis
+                    onExpiryDateChange(datePickerState.selectedDateMillis)
                     showDatePicker = false
                 }) {
                     Text("OK")
@@ -226,5 +282,65 @@ fun AddEditItemScreen(
         ) {
             DatePicker(state = datePickerState)
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AddEditItemPreview() {
+    PantryPureTheme {
+        AddEditItemContent(
+            name = "Milk",
+            onNameChange = {},
+            quantity = "2.0",
+            onQuantityChange = {},
+            unit = PantryUnit.LITERS,
+            onUnitChange = {},
+            category = "Dairy",
+            onCategoryChange = {},
+            location = "Fridge",
+            onLocationChange = {},
+            notes = "Organic milk",
+            onNotesChange = {},
+            expiryDate = System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7,
+            onExpiryDateChange = {},
+            expiryThresholdDays = 3,
+            onExpiryThresholdDaysChange = {},
+            quantityThreshold = 1.0,
+            onQuantityThresholdChange = {},
+            onSave = {},
+            onNavigateBack = {},
+            isEditMode = false
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AddEditItemEditPreview() {
+    PantryPureTheme {
+        AddEditItemContent(
+            name = "Milk",
+            onNameChange = {},
+            quantity = "2.0",
+            onQuantityChange = {},
+            unit = PantryUnit.LITERS,
+            onUnitChange = {},
+            category = "Dairy",
+            onCategoryChange = {},
+            location = "Fridge",
+            onLocationChange = {},
+            notes = "Organic milk",
+            onNotesChange = {},
+            expiryDate = System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7,
+            onExpiryDateChange = {},
+            expiryThresholdDays = 3,
+            onExpiryThresholdDaysChange = {},
+            quantityThreshold = 1.0,
+            onQuantityThresholdChange = {},
+            onSave = {},
+            onNavigateBack = {},
+            isEditMode = true
+        )
     }
 }

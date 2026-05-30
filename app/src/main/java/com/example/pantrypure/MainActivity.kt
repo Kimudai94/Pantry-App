@@ -81,6 +81,9 @@ fun PantryPureApp(viewModel: PantryViewModel) {
         composable(Screen.ShoppingList.route) {
             ShoppingListScreen(
                 viewModel = viewModel,
+                onItemClick = { itemId ->
+                    navController.navigate(Screen.AddEditItem.createRoute(itemId))
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }

@@ -59,17 +59,17 @@ Umfassende Dokumentation des Room-Datenbankschemas und der Migrationsprozesse f�
 
 #### PANTRY_ITEMS Table
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | INTEGER | PRIMARY KEY, AUTOINCREMENT | Unique identifier |
-| `name` | TEXT | NOT NULL | Item name (e.g., "Spaghetti") |
-| `quantity` | REAL | NOT NULL | Current amount in pantry |
-| `unit` | TEXT | NOT NULL | PantryUnit as string (ENUM→converter) |
-| `expiryDate` | INTEGER | NULLABLE | Milliseconds since epoch (null = no expiry) |
-| `expiryThresholdDays` | INTEGER | NOT NULL, DEFAULT 3 | Days before expiry to warn |
-| `isOnShoppingList` | INTEGER | NOT NULL, DEFAULT 0 | Boolean (0=false, 1=true) |
-| `category` | TEXT | NOT NULL | Item category (e.g., "Obst") |
-| `notes` | TEXT | DEFAULT '' | Optional user notes |
+| Column                | Type    | Constraints                | Description                                 |
+|-----------------------|---------|----------------------------|---------------------------------------------|
+| `id`                  | INTEGER | PRIMARY KEY, AUTOINCREMENT | Unique identifier                           |
+| `name`                | TEXT    | NOT NULL                   | Item name (e.g., "Spaghetti")               |
+| `quantity`            | REAL    | NOT NULL                   | Current amount in pantry                    |
+| `unit`                | TEXT    | NOT NULL                   | PantryUnit as string (ENUM→converter)       |
+| `expiryDate`          | INTEGER | NULLABLE                   | Milliseconds since epoch (null = no expiry) |
+| `expiryThresholdDays` | INTEGER | NOT NULL, DEFAULT 3        | Days before expiry to warn                  |
+| `isOnShoppingList`    | INTEGER | NOT NULL, DEFAULT 0        | Boolean (0=false, 1=true)                   |
+| `category`            | TEXT    | NOT NULL                   | Item category (e.g., "Obst")                |
+| `notes`               | TEXT    | DEFAULT ''                 | Optional user notes                         |
 
 **Example Data**:
 ```sql
@@ -81,14 +81,14 @@ INSERT INTO pantry_items VALUES
 
 #### CONSUMPTION_RECORDS Table
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | INTEGER | PRIMARY KEY, AUTOINCREMENT | Record ID |
-| `itemId` | INTEGER | FOREIGN KEY → pantry_items.id | Which item was consumed |
-| `itemName` | TEXT | NOT NULL | Snapshot of item name (for history) |
-| `quantityConsumed` | REAL | NOT NULL | Amount consumed (e.g., 1.0) |
-| `unit` | TEXT | NOT NULL | PantryUnit as string |
-| `timestamp` | INTEGER | NOT NULL, DEFAULT NOW | Milliseconds since epoch |
+| Column             | Type    | Constraints                   | Description                         |
+|--------------------|---------|-------------------------------|-------------------------------------|
+| `id`               | INTEGER | PRIMARY KEY, AUTOINCREMENT    | Record ID                           |
+| `itemId`           | INTEGER | FOREIGN KEY → pantry_items.id | Which item was consumed             |
+| `itemName`         | TEXT    | NOT NULL                      | Snapshot of item name (for history) |
+| `quantityConsumed` | REAL    | NOT NULL                      | Amount consumed (e.g., 1.0)         |
+| `unit`             | TEXT    | NOT NULL                      | PantryUnit as string                |
+| `timestamp`        | INTEGER | NOT NULL, DEFAULT NOW         | Milliseconds since epoch            |
 
 **Example Data**:
 ```sql
@@ -102,12 +102,12 @@ INSERT INTO consumption_records VALUES
 
 #### MEALS Table
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | INTEGER | PRIMARY KEY, AUTOINCREMENT | Meal ID |
-| `name` | TEXT | NOT NULL | Recipe name (e.g., "Spaghetti Carbonara") |
-| `category` | TEXT | NOT NULL | MealCategory as string (BREAKFAST, LUNCH, etc.) |
-| `instructions` | TEXT | NOT NULL | Cooking instructions |
+| Column         | Type    | Constraints                | Description                                     |
+|----------------|---------|----------------------------|-------------------------------------------------|
+| `id`           | INTEGER | PRIMARY KEY, AUTOINCREMENT | Meal ID                                         |
+| `name`         | TEXT    | NOT NULL                   | Recipe name (e.g., "Spaghetti Carbonara")       |
+| `category`     | TEXT    | NOT NULL                   | MealCategory as string (BREAKFAST, LUNCH, etc.) |
+| `instructions` | TEXT    | NOT NULL                   | Cooking instructions                            |
 
 **Example Data**:
 ```sql
@@ -118,12 +118,12 @@ INSERT INTO meals VALUES
 
 #### MEAL_INGREDIENTS Table
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | INTEGER | PRIMARY KEY, AUTOINCREMENT | Ingredient record ID |
-| `mealId` | INTEGER | FOREIGN KEY → meals.id | Which meal uses this ingredient |
-| `pantryItemId` | INTEGER | FOREIGN KEY → pantry_items.id | Which item from pantry |
-| `requiredQuantity` | REAL | NOT NULL | Amount needed for recipe |
+| Column             | Type    | Constraints                   | Description                     |
+|--------------------|---------|-------------------------------|---------------------------------|
+| `id`               | INTEGER | PRIMARY KEY, AUTOINCREMENT    | Ingredient record ID            |
+| `mealId`           | INTEGER | FOREIGN KEY → meals.id        | Which meal uses this ingredient |
+| `pantryItemId`     | INTEGER | FOREIGN KEY → pantry_items.id | Which item from pantry          |
+| `requiredQuantity` | REAL    | NOT NULL                      | Amount needed for recipe        |
 
 **Example Data**:
 ```sql
@@ -501,11 +501,11 @@ For production releases:
 
 ## Summary: Database File Locations
 
-| Component | File |
-|-----------|------|
-| Entity Definitions | `data/model/*.kt` |
-| DAO Definitions | `data/dao/*.kt` |
-| Database Setup | `data/database/PantryDatabase.kt` |
-| Type Converters | `data/database/PantryTypeConverters.kt` |
-| Migrations | `data/database/migrations/*.kt` (create new file) |
-| Application Bootstrap | `PantryPureApplication.kt` |
+| Component             | File                                              |
+|-----------------------|---------------------------------------------------|
+| Entity Definitions    | `data/model/*.kt`                                 |
+| DAO Definitions       | `data/dao/*.kt`                                   |
+| Database Setup        | `data/database/PantryDatabase.kt`                 |
+| Type Converters       | `data/database/PantryTypeConverters.kt`           |
+| Migrations            | `data/database/migrations/*.kt` (create new file) |
+| Application Bootstrap | `PantryPureApplication.kt`                        |

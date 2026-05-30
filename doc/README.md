@@ -229,7 +229,7 @@ interface PantryDao {
 
 ## 🚀 Entwicklung & Anpassungen
 
-### Neue Feature hinzufügen (Checklist)
+### Neue Features hinzufügen (Checklist)
 1. **Modell**: Neue @Entity Klasse in `data/model/`
 2. **DAO**: Interface in `data/dao/` mit @Query/@Insert/@Update/@Delete
 3. **Repository**: Public API Methoden hinzufügen

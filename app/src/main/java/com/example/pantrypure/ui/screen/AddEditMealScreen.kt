@@ -10,7 +10,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.pantrypure.data.model.*
+import com.example.pantrypure.data.model.Meal
+import com.example.pantrypure.data.model.MealCategory
+import com.example.pantrypure.data.model.MealIngredient
+import com.example.pantrypure.data.model.MealIngredientWithName
 import com.example.pantrypure.ui.viewmodel.PantryViewModel
 import com.example.pantrypure.ui.viewmodel.MealOperationState
 
@@ -19,14 +22,13 @@ import com.example.pantrypure.ui.viewmodel.MealOperationState
 fun AddEditMealScreen(
     viewModel: PantryViewModel,
     mealId: Long?,
-    onNavigateBack: () -> Unit,
-    onShowIngredientPicker: (Long) -> Unit = {}
+    onNavigateBack: () -> Unit
 ) {
     var mealName by remember { mutableStateOf("") }
     var mealDescription by remember { mutableStateOf("") }
     var mealNotes by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf(MealCategory.OTHER) }
-    var ingredients by remember { mutableStateOf<List<Pair<String, Pair<Double, PantryUnit>>>>(emptyList()) }
+    var ingredients by remember { mutableStateOf<List<MealIngredientWithName>>(emptyList()) }
     var showIngredientPicker by remember { mutableStateOf(false) }
     val operationState by viewModel.mealOperationState.collectAsState()
 
@@ -39,11 +41,7 @@ fun AddEditMealScreen(
                 mealDescription = meal.meal.description
                 mealNotes = meal.meal.notes
                 selectedCategory = meal.meal.category
-                ingredients = meal.ingredients.map {
-                    Triple(it.pantryItemName, it.requiredQuantity, it.requiredUnit).let { (name, qty, unit) ->
-                        name to (qty to unit)
-                    }
-                }
+                ingredients = meal.ingredients
             }
         }
     }
@@ -62,8 +60,13 @@ fun AddEditMealScreen(
     if (showIngredientPicker) {
         MealIngredientPickerSheet(
             viewModel = viewModel,
-            onIngredientSelected = { name, qty, unit ->
-                ingredients = ingredients + (name to (qty to unit))
+            onIngredientSelected = { itemId, name, qty, unit ->
+                ingredients = ingredients + MealIngredientWithName(
+                    pantryItemId = itemId,
+                    ingredientName = name,
+                    requiredQuantity = qty,
+                    requiredUnit = unit
+                )
                 showIngredientPicker = false
             },
             onDismiss = { showIngredientPicker = false }
@@ -176,8 +179,7 @@ fun AddEditMealScreen(
                 Text("Zutaten", style = MaterialTheme.typography.headlineSmall)
             }
 
-            items(ingredients) { (ingredientName, qtyUnit) ->
-                val (qty, unit) = qtyUnit
+            items(ingredients) { ingredient ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -185,14 +187,14 @@ fun AddEditMealScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(ingredientName, style = MaterialTheme.typography.bodyMedium)
+                        Text(ingredient.pantryItemName, style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            "$qty ${unit.label}",
+                            "${ingredient.requiredQuantity} ${ingredient.requiredUnit.label}",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
                     IconButton(onClick = {
-                        ingredients = ingredients.filter { it.first != ingredientName }
+                        ingredients = ingredients.filter { it.ingredientName != ingredient.ingredientName }
                     }) {
                         Icon(Icons.Default.Delete, contentDescription = "Zutat entfernen")
                     }
@@ -221,13 +223,16 @@ fun AddEditMealScreen(
                                 category = selectedCategory,
                                 notes = mealNotes
                             )
-                            if (mealId != null && mealId > 0) {
-                                viewModel.updateMeal(meal)
-                            } else {
-                                viewModel.createMeal(meal)
-                                // Note: Ingredients should be saved via a separate operation
-                                // For now, we'll store them in the ViewModel state if needed
+                            val mealIngredients = ingredients.map {
+                                MealIngredient(
+                                    mealId = meal.id,
+                                    ingredientName = it.ingredientName,
+                                    pantryItemId = it.pantryItemId,
+                                    requiredQuantity = it.requiredQuantity,
+                                    requiredUnit = it.requiredUnit
+                                )
                             }
+                            viewModel.saveMeal(meal, mealIngredients)
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),

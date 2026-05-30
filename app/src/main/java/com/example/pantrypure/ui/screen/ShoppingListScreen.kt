@@ -1,5 +1,6 @@
 package com.example.pantrypure.ui.screen
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,6 +23,7 @@ import com.example.pantrypure.ui.viewmodel.PantryViewModel
 @Composable
 fun ShoppingListScreen(
     viewModel: PantryViewModel,
+    onItemClick: (Long) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     val items by viewModel.shoppingListItems.collectAsState()
@@ -72,6 +74,7 @@ fun ShoppingListScreen(
                 items(items, key = { it.id }) { item ->
                     ShoppingListItemCard(
                         item = item,
+                        onClick = { onItemClick(item.id) },
                         onRemoveClick = { viewModel.toggleShoppingListStatus(item) }
                     )
                 }
@@ -83,10 +86,12 @@ fun ShoppingListScreen(
 @Composable
 fun ShoppingListItemCard(
     item: PantryItem,
+    onClick: () -> Unit,
     onRemoveClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth()
+          .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -104,6 +109,9 @@ fun ShoppingListItemCard(
                 )
                 Text(
                     text = "Category: ${item.category}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(text = "Needed: ${"%.2f".format(item.neededQuantity)} ${item.unit}",
                     style = MaterialTheme.typography.bodySmall
                 )
             }

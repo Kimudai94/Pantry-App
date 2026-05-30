@@ -30,7 +30,7 @@
 ## Project Structure
 
 - **data/**: Contains data-related code, including database models and repositories.
-- **ui/**: Houses the user interface components, viewmodels, and navigation logic.
+- **ui/**: Houses the user interface components, view models, and navigation logic.
 - **util/**: Includes utility classes such as notification helpers and unit converters.
 - **worker/**: Manages background tasks like expiry checks using WorkManager.
 
@@ -43,7 +43,7 @@ We follow Kotlin best practices and maintain a consistent code style. Key points
 - Adding comments where necessary
 
 ### Testing Approach
-The project includes unit tests for critical components, such as viewmodels and repositories. You can find these in the `test/` directory.
+The project includes unit tests for critical components, such as view models and repositories. You can find these in the `test/` directory.
 
 ### Build and Deployment Process
 1. Use Gradle to build the app: `./gradlew assembleRelease`

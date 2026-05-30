@@ -318,6 +318,6 @@ Wenn neue Dokumentationsdateien hinzugefügt werden:
 
 ---
 
-**Last Updated**: May 5, 2026  
+**Last Updated**: May-05-2026  
 **Projekt**: PantryPure Android App  
 **Tech Stack**: Kotlin, Jetpack Compose, Room, MVVM

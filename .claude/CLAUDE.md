@@ -10,16 +10,16 @@ I deploy exclusively via **Docker / Docker Compose** (self-hosted).
 
 ## Tech Stack
 
-| Layer | Tools |
-|---|---|
-| **Languages** | Python (primary), TypeScript/JavaScript, Kotlin, SQL |
-| **Backend** | Flask |
-| **Databases** | PostgreSQL, SQLite |
-| **ORM / SQL** | ORM for simple queries, raw SQL for complex ones |
-| **AI / LLM** | Instructor / Structured Outputs (direct SDK integration, no LangChain) |
-| **Data** | Data Engineering / Pipelines, Analytics / BI |
-| **Package Managers** | `uv` (preferred), `pip + venv` (fallback), `npm` / `pnpm` / `yarn` (TS) |
-| **Linting / Formatting** | `black` + `ruff` (Python), `prettier` + `eslint` (TypeScript) |
+| Layer                    | Tools                                                                   |
+|--------------------------|-------------------------------------------------------------------------|
+| **Languages**            | Python (primary), TypeScript/JavaScript, Kotlin, SQL                    |
+| **Backend**              | Flask                                                                   |
+| **Databases**            | PostgreSQL, SQLite                                                      |
+| **ORM / SQL**            | ORM for simple queries, raw SQL for complex ones                        |
+| **AI / LLM**             | Instructor / Structured Outputs (direct SDK integration, no LangChain)  |
+| **Data**                 | Data Engineering / Pipelines, Analytics / BI                            |
+| **Package Managers**     | `uv` (preferred), `pip + venv` (fallback), `npm` / `pnpm` / `yarn` (TS) |
+| **Linting / Formatting** | `black` + `ruff` (Python), `prettier` + `eslint` (TypeScript)           |
 
 ---
 
