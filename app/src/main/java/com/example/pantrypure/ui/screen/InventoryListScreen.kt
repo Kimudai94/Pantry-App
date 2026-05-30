@@ -195,8 +195,8 @@ fun PantryItemCard(
     }
 
     val cardContainerColor = when (status) {
-        "OVERDUE" -> Color.Red.copy(alpha = 0.15f)      // Leichtes Rot
-        "EXPIRING SOON" -> Color(0xFFFFA000).copy(alpha = 0.15f) // Leichtes Orange
+        "OVERDUE" -> Color.Red.copy(alpha = 0.15f)      // Leicht-Rot
+        "EXPIRING SOON" -> Color(0xFFFFA000).copy(alpha = 0.15f) // Leicht-Orange
         else -> MaterialTheme.colorScheme.surfaceVariant   // Standardfarbe
     }
 
