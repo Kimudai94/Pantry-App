@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "main", "master", "gemini_android_studio" ]
   pull_request:
-    branches: [ "main", "master", "gemini_android_studio" ]
+    branches: [ "main" ]
 
 jobs:
   build:
