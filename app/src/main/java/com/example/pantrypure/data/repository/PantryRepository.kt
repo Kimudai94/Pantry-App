@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 
-class PantryRepository(
+open class PantryRepository(
     private val pantryDao: PantryDao,
     private val consumptionDao: ConsumptionDao,
     private val mealDao: MealDao,
@@ -31,10 +31,10 @@ class PantryRepository(
     private val mealPlanDao: MealPlanDao
 ) {
     // Pantry Item methods
-    fun getAllItems(): Flow<List<PantryItem>> = pantryDao.getAllItems()
-    suspend fun getItemById(id: Long): PantryItem? = pantryDao.getItemById(id)
-    suspend fun insertItem(item: PantryItem) = pantryDao.insertItem(item)
-    suspend fun updateItem(item: PantryItem) {
+    open fun getAllItems(): Flow<List<PantryItem>> = pantryDao.getAllItems()
+    open suspend fun getItemById(id: Long): PantryItem? = pantryDao.getItemById(id)
+    open suspend fun insertItem(item: PantryItem) = pantryDao.insertItem(item)
+    open suspend fun updateItem(item: PantryItem) {
         // LÖSCH-LOGIK: Wenn Menge <= 0, entferne das Item komplett
         // Optional: Prüfen, ob das Löschen den Schwellenwert triggert
         // Calculate total quantity across all items with the same name to check threshold
@@ -62,9 +62,12 @@ class PantryRepository(
             pantryDao.updateShoppingListStatusByName(item.name, false)
         }
     }
-    suspend fun deleteItem(item: PantryItem) = pantryDao.deleteItem(item)
-    fun getShoppingListItems(): Flow<List<PantryItem>> = pantryDao.getShoppingListItems()
-    suspend fun updateShoppingListStatusByName(name: String, isOnList: Boolean) =
+    open suspend fun deleteItem(item: PantryItem) {
+        pantryDao.deleteItem(item)
+        checkAndTriggerShoppingList(item)
+    }
+    open fun getShoppingListItems(): Flow<List<PantryItem>> = pantryDao.getShoppingListItems()
+    open suspend fun updateShoppingListStatusByName(name: String, isOnList: Boolean) =
         pantryDao.updateShoppingListStatusByName(name, isOnList)
 
     // Hilfsfunktion für den Fall, dass ein Item gelöscht wurde
@@ -108,15 +111,15 @@ class PantryRepository(
     }
 
     // Consumption history methods
-    fun getConsumptionHistory(): Flow<List<ConsumptionRecord>> = consumptionDao.getAllHistory()
-    suspend fun insertConsumptionRecord(record: ConsumptionRecord) = consumptionDao.insertRecord(record)
-    suspend fun clearHistory() = consumptionDao.clearHistory()
+    open fun getConsumptionHistory(): Flow<List<ConsumptionRecord>> = consumptionDao.getAllHistory()
+    open suspend fun insertConsumptionRecord(record: ConsumptionRecord) = consumptionDao.insertRecord(record)
+    open suspend fun clearHistory() = consumptionDao.clearHistory()
 
     // Meal methods
-    suspend fun deleteMeal(meal: Meal) = withContext(Dispatchers.IO) {
+    open suspend fun deleteMeal(meal: Meal) = withContext(Dispatchers.IO) {
         mealDao.deleteMeal(meal)
     }
-    suspend fun saveMealWithIngredients(meal: Meal, ingredients: List<MealIngredient>) = withContext(Dispatchers.IO) {
+    open suspend fun saveMealWithIngredients(meal: Meal, ingredients: List<MealIngredient>) = withContext(Dispatchers.IO) {
         val mealId = if (meal.id == 0L) {
             mealDao.insertMeal(meal)
         } else {
@@ -128,12 +131,12 @@ class PantryRepository(
             mealIngredientDao.insertIngredient(ingredient.copy(mealId = mealId))
         }
     }
-    suspend fun getMealWithIngredients(id: Long): MealWithIngredients? = withContext(Dispatchers.IO) {
+    open suspend fun getMealWithIngredients(id: Long): MealWithIngredients? = withContext(Dispatchers.IO) {
         val meal = mealDao.getMealById(id) ?: return@withContext null
         val ingredients = mealIngredientDao.getMealIngredientsWithNames(id)
         MealWithIngredients(meal, ingredients)
     }
-    fun getAllMealsWithIngredients(): Flow<List<MealWithIngredients>> {
+    open fun getAllMealsWithIngredients(): Flow<List<MealWithIngredients>> {
         return flow {
             val meals = mealDao.getAllMeals()
             val allIngredients = mealIngredientDao.getAllMealIngredientsWithNames()
@@ -147,7 +150,7 @@ class PantryRepository(
     }
 
     // Meal consumption with error handling
-    suspend fun consumeMeal(mealId: Long): MealConsumptionResult = withContext(Dispatchers.Default) {
+    open suspend fun consumeMeal(mealId: Long): MealConsumptionResult = withContext(Dispatchers.Default) {
         try {
             val mealWithIngredients = getMealWithIngredients(mealId)
                 ?: return@withContext MealConsumptionResult.NotFound
@@ -248,13 +251,13 @@ class PantryRepository(
     }
 
     // Meal Plan methods
-    fun getMealPlansInRange(startDate: Long, endDate: Long): Flow<List<MealPlanWithDetails>> =
+    open fun getMealPlansInRange(startDate: Long, endDate: Long): Flow<List<MealPlanWithDetails>> =
         mealPlanDao.getMealPlansInRange(startDate, endDate)
-    fun getUpcomingMealPlans(currentTime: Long): Flow<List<MealPlanWithDetails>> =
+    open fun getUpcomingMealPlans(currentTime: Long): Flow<List<MealPlanWithDetails>> =
         mealPlanDao.getUpcomingMealPlans(currentTime)
-    suspend fun insertMealPlan(mealPlan: MealPlan) = mealPlanDao.insertMealPlan(mealPlan)
-    suspend fun updateMealPlan(mealPlan: MealPlan) = mealPlanDao.updateMealPlan(mealPlan)
-    suspend fun deleteMealPlan(mealPlan: MealPlan) = mealPlanDao.deleteMealPlan(mealPlan)
-    suspend fun updateConsumedStatus(planId: Long, consumed: Boolean) =
+    open suspend fun insertMealPlan(mealPlan: MealPlan) = mealPlanDao.insertMealPlan(mealPlan)
+    open suspend fun updateMealPlan(mealPlan: MealPlan) = mealPlanDao.updateMealPlan(mealPlan)
+    open suspend fun deleteMealPlan(mealPlan: MealPlan) = mealPlanDao.deleteMealPlan(mealPlan)
+    open suspend fun updateConsumedStatus(planId: Long, consumed: Boolean) =
         mealPlanDao.updateConsumedStatus(planId, consumed)
 }

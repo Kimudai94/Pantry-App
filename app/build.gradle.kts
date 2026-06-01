@@ -4,6 +4,10 @@ plugins {
   alias(libs.plugins.google.devtools.ksp)
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
   namespace = "com.example.pantrypure"
   compileSdk {
@@ -34,6 +38,13 @@ android {
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
     }
   }
+
+  sourceSets {
+    getByName("androidTest") {
+      assets.directories.add(file("schemas").toString())
+    }
+  }
+
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
@@ -83,6 +94,10 @@ dependencies {
   testImplementation(libs.mockito.core)
   testImplementation(libs.mockito.kotlin)
   androidTestImplementation(libs.androidx.junit)
+  androidTestImplementation(libs.androidx.room.testing)
+  androidTestImplementation(libs.androidx.work.testing)
+  androidTestImplementation(libs.mockito.kotlin)
+  androidTestImplementation(libs.mockito.android)
   androidTestImplementation(libs.androidx.espresso.core)
   androidTestImplementation(platform(libs.androidx.compose.bom))
   androidTestImplementation(libs.androidx.compose.ui.test.junit4)

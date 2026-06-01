@@ -25,7 +25,7 @@ import com.example.pantrypure.data.model.MealPlan
         MealPlan::class
     ],
     version = 9,
-    exportSchema = false
+    exportSchema = true
 )
 @TypeConverters(PantryTypeConverters::class)
 abstract class PantryDatabase : RoomDatabase() {

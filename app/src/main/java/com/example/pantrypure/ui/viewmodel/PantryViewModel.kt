@@ -206,7 +206,7 @@ class PantryViewModel(private val repository: PantryRepository) : ViewModel() {
     }
 
     // ============== Meal Plan State ==============
-    private val _currentPlannerDate = MutableStateFlow(getStartOfWeek(System.currentTimeMillis()))
+    val _currentPlannerDate = MutableStateFlow(getStartOfWeek(System.currentTimeMillis()))
     val currentPlannerDate: StateFlow<Long> = _currentPlannerDate
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)

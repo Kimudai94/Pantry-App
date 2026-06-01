@@ -24,6 +24,10 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        var skipNotificationPermissionForTest = false
+    }
+
     private val viewModel: PantryViewModel by viewModels {
         PantryViewModelFactory((application as PantryPureApplication).repository)
     }
@@ -31,9 +35,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
+        val showNotificationPermission = intent.getBooleanExtra("SHOW_NOTIFICATION_PERMISSION", true) 
+            && !skipNotificationPermissionForTest
+        
         setContent {
             PantryPureTheme {
-                NotificationPermissionEffect()
+                if (showNotificationPermission) {
+                    NotificationPermissionEffect()
+                }
                 PantryPureApp(viewModel)
             }
         }
