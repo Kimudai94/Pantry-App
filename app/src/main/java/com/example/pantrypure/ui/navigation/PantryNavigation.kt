@@ -4,7 +4,10 @@ sealed class Screen(val route: String) {
     object InventoryList : Screen("inventory_list")
     object ShoppingList : Screen("shopping_list")
     object History : Screen("history")
-    object MealsList : Screen("meals_list")
+    object MealsList : Screen("meals_list?pickDate={pickDate}") {
+        fun createRoute(pickDate: Long? = null) = if (pickDate != null) "meals_list?pickDate=$pickDate" else "meals_list?pickDate=-1"
+    }
+    object MealPlanner : Screen("meal_planner")
     object AddEditItem : Screen("add_edit_item?itemId={itemId}") {
         fun createRoute(itemId: Long?) = "add_edit_item?itemId=$itemId"
     }

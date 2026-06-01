@@ -45,7 +45,8 @@ fun MealsListScreen(
     viewModel: PantryViewModel,
     onAddMealClick: () -> Unit,
     onMealClick: (Long) -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    pickDate: Long? = null
 ) {
     val mealsByCategory by viewModel.mealsByCategory.collectAsState()
     val selectedCategory by viewModel.selectedMealCategory.collectAsState()
@@ -54,7 +55,7 @@ fun MealsListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Mahlzeiten") },
+                title = { Text(if (pickDate != null) "Mahlzeit auswählen" else "Mahlzeiten") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Zurück")
@@ -107,7 +108,14 @@ fun MealsListScreen(
                         MealListItem(
                             meal = mealWithIngredients.meal,
                             ingredientCount = mealWithIngredients.ingredients.size,
-                            onMealClick = { onMealClick(mealWithIngredients.meal.id) },
+                            onMealClick = {
+                                if (pickDate != null) {
+                                    viewModel.planMeal(mealWithIngredients.meal.id, pickDate)
+                                    onNavigateBack()
+                                } else {
+                                    onMealClick(mealWithIngredients.meal.id)
+                                }
+                            },
                             onDeleteClick = { mealToDelete = mealWithIngredients.meal }
                         )
                     }

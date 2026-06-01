@@ -132,7 +132,8 @@ fun MealIngredientPickerSheet(
                     NumberMode.DECIMAL,
                     label = "Quantity",
                     initial = quantity.toDoubleOrNull() ?: 1.0,
-                    onValueChange = { quantity = it.toString() }
+                    onValueChange = { quantity = it.toString() },
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 // Unit selection

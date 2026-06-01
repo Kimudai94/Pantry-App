@@ -4,12 +4,15 @@ import com.example.pantrypure.data.dao.PantryDao
 import com.example.pantrypure.data.dao.ConsumptionDao
 import com.example.pantrypure.data.dao.MealDao
 import com.example.pantrypure.data.dao.MealIngredientDao
+import com.example.pantrypure.data.dao.MealPlanDao
 import com.example.pantrypure.data.model.AvailabilityCheck
 import com.example.pantrypure.data.model.ConsumptionRecord
 import com.example.pantrypure.data.model.Meal
 import com.example.pantrypure.data.model.MealConsumptionResult
 import com.example.pantrypure.data.model.MealIngredient
 import com.example.pantrypure.data.model.MealIngredientDetail
+import com.example.pantrypure.data.model.MealPlan
+import com.example.pantrypure.data.model.MealPlanWithDetails
 import com.example.pantrypure.data.model.MealWithIngredients
 import com.example.pantrypure.data.model.MissingIngredient
 import com.example.pantrypure.data.model.PantryItem
@@ -24,7 +27,8 @@ class PantryRepository(
     private val pantryDao: PantryDao,
     private val consumptionDao: ConsumptionDao,
     private val mealDao: MealDao,
-    private val mealIngredientDao: MealIngredientDao
+    private val mealIngredientDao: MealIngredientDao,
+    private val mealPlanDao: MealPlanDao
 ) {
     // Pantry Item methods
     fun getAllItems(): Flow<List<PantryItem>> = pantryDao.getAllItems()
@@ -242,4 +246,15 @@ class PantryRepository(
             AvailabilityCheck.Failure(missingItems)
         }
     }
+
+    // Meal Plan methods
+    fun getMealPlansInRange(startDate: Long, endDate: Long): Flow<List<MealPlanWithDetails>> =
+        mealPlanDao.getMealPlansInRange(startDate, endDate)
+    fun getUpcomingMealPlans(currentTime: Long): Flow<List<MealPlanWithDetails>> =
+        mealPlanDao.getUpcomingMealPlans(currentTime)
+    suspend fun insertMealPlan(mealPlan: MealPlan) = mealPlanDao.insertMealPlan(mealPlan)
+    suspend fun updateMealPlan(mealPlan: MealPlan) = mealPlanDao.updateMealPlan(mealPlan)
+    suspend fun deleteMealPlan(mealPlan: MealPlan) = mealPlanDao.deleteMealPlan(mealPlan)
+    suspend fun updateConsumedStatus(planId: Long, consumed: Boolean) =
+        mealPlanDao.updateConsumedStatus(planId, consumed)
 }

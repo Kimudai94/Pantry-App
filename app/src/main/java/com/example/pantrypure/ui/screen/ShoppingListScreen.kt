@@ -27,11 +27,12 @@ fun ShoppingListScreen(
     onNavigateBack: () -> Unit
 ) {
     val items by viewModel.shoppingListItems.collectAsState()
+    val plannedNeeds by viewModel.plannedShoppingNeeds.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Shopping List") },
+                title = { Text("Einkaufsliste") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -41,7 +42,7 @@ fun ShoppingListScreen(
         },
         contentWindowInsets = WindowInsets.safeDrawing
     ) { paddingValues ->
-        if (items.isEmpty()) {
+        if (items.isEmpty() && plannedNeeds.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -57,7 +58,7 @@ fun ShoppingListScreen(
                     )
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        "Your shopping list is empty",
+                        "Deine Einkaufsliste ist leer",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -71,14 +72,78 @@ fun ShoppingListScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(items, key = { it.id }) { item ->
-                    ShoppingListItemCard(
-                        item = item,
-                        onClick = { onItemClick(item.id) },
-                        onRemoveClick = { viewModel.toggleShoppingListStatus(item) }
-                    )
+                if (items.isNotEmpty()) {
+                    item {
+                        Text(
+                            "Manuelle Liste / Bestand niedrig",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                    items(items, key = { "item_${it.id}" }) { item ->
+                        ShoppingListItemCard(
+                            item = item,
+                            onClick = { onItemClick(item.id) },
+                            onRemoveClick = { viewModel.toggleShoppingListStatus(item) }
+                        )
+                    }
+                }
+
+                if (plannedNeeds.isNotEmpty()) {
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            "Geplanter Bedarf (Wochenplan)",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                    items(plannedNeeds, key = { "need_${it.itemName}_${it.unit}" }) { need ->
+                        PlannedNeedCard(need)
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun PlannedNeedCard(need: com.example.pantrypure.data.model.MissingIngredient) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = need.itemName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Benötigt: ${"%.2f".format(need.required)} ${need.unit}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    text = "Fehlend: ${"%.2f".format(need.deficit)} ${need.unit}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.ShoppingCart,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }

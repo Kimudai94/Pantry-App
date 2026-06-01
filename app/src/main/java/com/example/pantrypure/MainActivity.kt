@@ -75,6 +75,9 @@ fun PantryPureApp(viewModel: PantryViewModel) {
                 },
                 onMealsClick = {
                     navController.navigate(Screen.MealsList.route)
+                },
+                onPlannerClick = {
+                    navController.navigate(Screen.MealPlanner.route)
                 }
             )
         }
@@ -93,7 +96,11 @@ fun PantryPureApp(viewModel: PantryViewModel) {
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-        composable(Screen.MealsList.route) {
+        composable(
+            route = Screen.MealsList.route,
+            arguments = listOf(navArgument("pickDate") { type = NavType.LongType; defaultValue = -1L })
+        ) { backStackEntry ->
+            val pickDate = backStackEntry.arguments?.getLong("pickDate")
             MealsListScreen(
                 viewModel = viewModel,
                 onAddMealClick = {
@@ -102,7 +109,17 @@ fun PantryPureApp(viewModel: PantryViewModel) {
                 onMealClick = { mealId ->
                     navController.navigate(Screen.MealDetail.createRoute(mealId))
                 },
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                pickDate = if (pickDate == -1L) null else pickDate
+            )
+        }
+        composable(Screen.MealPlanner.route) {
+            MealPlannerScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onAddMealToPlan = { date ->
+                    navController.navigate(Screen.MealsList.createRoute(date))
+                }
             )
         }
         composable(
