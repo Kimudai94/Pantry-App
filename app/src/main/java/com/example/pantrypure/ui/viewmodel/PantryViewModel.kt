@@ -15,6 +15,7 @@ import com.example.pantrypure.data.repository.PantryRepository
 import com.example.pantrypure.data.model.MissingIngredient
 import com.example.pantrypure.data.model.PantryUnit
 import com.example.pantrypure.data.util.UnitConverter
+import com.example.pantrypure.ui.screen.scanner.ScannedIngredient
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -130,6 +131,21 @@ class PantryViewModel(private val repository: PantryRepository) : ViewModel() {
     fun toggleShoppingListStatus(item: PantryItem) {
         viewModelScope.launch {
             repository.updateShoppingListStatusByName(item.name, !item.isOnShoppingList)
+        }
+    }
+
+    fun addIngredientsFromScanner(ingredients: List<ScannedIngredient>) {
+        viewModelScope.launch {
+            ingredients.forEach { ingredient ->
+                repository.insertItem(
+                    PantryItem(
+                        name = ingredient.name,
+                        quantity = ingredient.quantity,
+                        unit = ingredient.unit,
+                        category = "Other"
+                    )
+                )
+            }
         }
     }
 

@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
@@ -30,6 +32,22 @@ android {
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
+  signingConfigs {
+    create("release") {
+      // Wir laden die Daten aus der extra Datei
+      val keystorePropertiesFile = rootProject.file("keystore.properties")
+      if (keystorePropertiesFile.exists()) {
+        val props = Properties()
+        keystorePropertiesFile.inputStream().use { props.load(it) }
+
+        storeFile = file(props.getProperty("storeFile"))
+        storePassword = props.getProperty("storePassword")
+        keyAlias = props.getProperty("keyAlias")
+        keyPassword = props.getProperty("keyPassword")
+      }
+    }
+  }
+
   buildTypes {
     debug {
       // Enable coverage for unit tests
@@ -40,6 +58,7 @@ android {
     release {
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+      signingConfig = signingConfigs.getByName("release")
     }
   }
 
@@ -56,6 +75,7 @@ android {
   buildFeatures {
     compose = true
   }
+
 }
 
 dependencies {
@@ -86,6 +106,7 @@ dependencies {
   implementation(libs.androidx.camera.lifecycle)
   implementation(libs.androidx.camera.view)
   implementation(libs.androidx.camera.core)
+  implementation(libs.mlkit.text.recognition)
   implementation(libs.logging.interceptor)
   implementation(libs.okhttp)
   implementation(libs.moshi.kotlin)

@@ -16,6 +16,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.pantrypure.ui.navigation.Screen
 import com.example.pantrypure.ui.screen.*
+import com.example.pantrypure.ui.screen.scanner.ScannerScreen
 import com.example.pantrypure.ui.theme.PantryPureTheme
 import com.example.pantrypure.ui.viewmodel.PantryViewModel
 import com.example.pantrypure.ui.viewmodel.PantryViewModelFactory
@@ -88,6 +89,18 @@ fun PantryPureApp(viewModel: PantryViewModel) {
                 },
                 onPlannerClick = {
                     navController.navigate(Screen.MealPlanner.route)
+                },
+                onScannerClick = {
+                    navController.navigate(Screen.Scanner.route)
+                }
+            )
+        }
+        composable(Screen.Scanner.route) {
+            ScannerScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onIngredientsDetected = { ingredients ->
+                    viewModel.addIngredientsFromScanner(ingredients)
+                    navController.popBackStack()
                 }
             )
         }
