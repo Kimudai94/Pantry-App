@@ -1,5 +1,6 @@
 package com.example.pantrypure.util
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -50,9 +51,9 @@ fun NumberSpinnerFlexible(
         else
             "%.2f".format(java.util.Locale.getDefault(), it)
     },
-  onValueChange: (Double) -> Unit
+  onValueChange: (Double) -> Unit,
+  @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
-    val modifier: Modifier = Modifier
     val containerHeight = 56.dp
     val itemHeight = 48.dp
     

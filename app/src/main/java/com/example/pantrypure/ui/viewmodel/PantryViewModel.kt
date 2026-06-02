@@ -7,11 +7,17 @@ import com.example.pantrypure.data.model.Meal
 import com.example.pantrypure.data.model.MealCategory
 import com.example.pantrypure.data.model.MealConsumptionResult
 import com.example.pantrypure.data.model.MealIngredient
+import com.example.pantrypure.data.model.MealPlan
+import com.example.pantrypure.data.model.MealPlanWithDetails
 import com.example.pantrypure.data.model.MealWithIngredients
 import com.example.pantrypure.data.model.PantryItem
 import com.example.pantrypure.data.repository.PantryRepository
+import com.example.pantrypure.data.model.MissingIngredient
+import com.example.pantrypure.data.model.PantryUnit
+import com.example.pantrypure.data.util.UnitConverter
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 enum class SortOption { NAME, EXPIRY_DATE }
 enum class FilterOption { ALL, OVERDUE, EXPIRING_SOON }
@@ -198,5 +204,223 @@ class PantryViewModel(private val repository: PantryRepository) : ViewModel() {
                 _mealOperationState.value = MealOperationState.Error(e.message ?: "Fehler beim Löschen")
             }
         }
+    }
+
+    // ============== Meal Plan State ==============
+    val _currentPlannerDate = MutableStateFlow(getStartOfWeek(System.currentTimeMillis()))
+    val currentPlannerDate: StateFlow<Long> = _currentPlannerDate
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val weeklyMealPlans: StateFlow<List<MealPlanWithDetails>> = _currentPlannerDate
+        .flatMapLatest { startDate ->
+            val endDate = startDate + (7 * 24 * 60 * 60 * 1000L) - 1
+            repository.getMealPlansInRange(startDate, endDate)
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    val mealPlanSimulation: StateFlow<Map<Long, List<MissingIngredient>>> = combine(
+        repository.getAllItems(),
+        weeklyMealPlans
+    ) { inventory, plans ->
+        simulateConsumption(inventory, plans)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyMap()
+    )
+
+    /**
+     * Aggregiert alle Defizite aus der Mahlzeitenplanung für die Einkaufsliste.
+     */
+    val plannedShoppingNeeds: StateFlow<List<MissingIngredient>> = mealPlanSimulation
+        .map { simulation ->
+            simulation.values.flatten()
+                .groupBy { it.itemName.trim().lowercase() }
+                .mapNotNull { (name, group) ->
+                    // Wir gruppieren innerhalb des Namens noch nach kompatiblen Einheiten (z.B. L/ml vs. Stücke)
+                    val subgroupedByBaseUnit = group.groupBy { UnitConverter.getBaseUnit(it.unit) }
+                    
+                    subgroupedByBaseUnit.map { (baseUnit, subGroup) ->
+                        val totalRequiredInBase = subGroup.sumOf { UnitConverter.convert(it.required, it.unit, baseUnit) }
+                        val totalDeficitInBase = subGroup.sumOf { UnitConverter.convert(it.deficit, it.unit, baseUnit) }
+                        
+                        // Liter und KG als Standard für die Zusammenfassung verwenden
+                        var finalUnit = baseUnit
+                        var finalRequired = totalRequiredInBase
+                        var finalDeficit = totalDeficitInBase
+                        
+                        if (baseUnit == PantryUnit.MILLILITERS) {
+                            finalUnit = PantryUnit.LITERS
+                            finalRequired = totalRequiredInBase / 1000.0
+                            finalDeficit = totalDeficitInBase / 1000.0
+                        } else if (baseUnit == PantryUnit.GRAMS) {
+                            finalUnit = PantryUnit.KILOGRAMS
+                            finalRequired = totalRequiredInBase / 1000.0
+                            finalDeficit = totalDeficitInBase / 1000.0
+                        }
+
+                        val first = subGroup.first()
+                        MissingIngredient(
+                            pantryItemId = first.pantryItemId,
+                            itemName = first.itemName.trim(),
+                            unit = finalUnit,
+                            required = finalRequired,
+                            available = (finalRequired - finalDeficit).coerceAtLeast(0.0),
+                            deficit = finalDeficit
+                        )
+                    }
+                }
+                .flatten()
+                .filter { it.deficit > 0.001 }
+                .sortedBy { it.itemName }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    private fun simulateConsumption(
+        inventory: List<PantryItem>,
+        plans: List<MealPlanWithDetails>
+    ): Map<Long, List<MissingIngredient>> {
+        val virtualInventory = inventory.groupBy { it.name }.mapValues { entry ->
+            entry.value.toMutableList()
+        }.toMutableMap()
+
+        val missingResults = mutableMapOf<Long, List<MissingIngredient>>()
+
+        // Sort plans by date to simulate chronological consumption
+        plans.sortedBy { it.plan.plannedDate }.forEach { planWithDetails ->
+            if (planWithDetails.plan.isConsumed) return@forEach
+
+            val missingForPlan = mutableListOf<MissingIngredient>()
+
+            planWithDetails.ingredients.forEach { ingredient ->
+                val items = virtualInventory[ingredient.ingredientName] ?: mutableListOf()
+                val remainingToNeed = ingredient.requiredQuantity * planWithDetails.plan.servings
+
+                // Calculate total available for this ingredient in virtual inventory
+                var totalAvailable = 0.0
+                items.forEach { item ->
+                    try {
+                        totalAvailable += UnitConverter.convert(item.quantity, item.unit, ingredient.requiredUnit)
+                    } catch (e: Exception) {}
+                }
+
+                if (totalAvailable < remainingToNeed) {
+                    missingForPlan.add(
+                        MissingIngredient(
+                            pantryItemId = ingredient.pantryItemId,
+                            itemName = ingredient.ingredientName,
+                            required = remainingToNeed,
+                            available = totalAvailable,
+                            unit = ingredient.requiredUnit,
+                            deficit = remainingToNeed - totalAvailable
+                        )
+                    )
+                } else {
+                    // Deduct from virtual inventory
+                    var deducted = 0.0
+                    val iterator = items.listIterator()
+                    while (iterator.hasNext() && deducted < remainingToNeed) {
+                        val item = iterator.next()
+                        try {
+                            val availInReq = UnitConverter.convert(item.quantity, item.unit, ingredient.requiredUnit)
+                            val toTake = minOf(availInReq, remainingToNeed - deducted)
+                            val toTakeInOrig = UnitConverter.convert(toTake, ingredient.requiredUnit, item.unit)
+                            
+                            val newQty = item.quantity - toTakeInOrig
+                            iterator.set(item.copy(quantity = newQty))
+                            deducted += toTake
+                        } catch (e: Exception) {}
+                    }
+                }
+            }
+            if (missingForPlan.isNotEmpty()) {
+                val aggregatedMissing = missingForPlan.groupBy { it.itemName.trim().lowercase() to it.unit }
+                    .map { (key, group) ->
+                        val first = group.first()
+                        val totalRequired = group.sumOf { it.required }
+                        val totalDeficit = group.sumOf { it.deficit }
+                        MissingIngredient(
+                            pantryItemId = first.pantryItemId,
+                            itemName = first.itemName.trim(),
+                            unit = key.second,
+                            required = totalRequired,
+                            available = (totalRequired - totalDeficit).coerceAtLeast(0.0),
+                            deficit = totalDeficit
+                        )
+                    }
+                missingResults[planWithDetails.plan.id] = aggregatedMissing
+            }
+        }
+        return missingResults
+    }
+
+    fun movePlannerWeek(weeks: Int) {
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = _currentPlannerDate.value
+        calendar.add(Calendar.WEEK_OF_YEAR, weeks)
+        _currentPlannerDate.value = getStartOfWeek(calendar.timeInMillis)
+    }
+
+    fun planMeal(mealId: Long, date: Long) {
+        viewModelScope.launch {
+            repository.insertMealPlan(MealPlan(mealId = mealId, plannedDate = getStartOfDay(date)))
+        }
+    }
+
+    fun updateMealPlanDate(plan: MealPlan, newDate: Long) {
+        viewModelScope.launch {
+            repository.updateMealPlan(plan.copy(plannedDate = getStartOfDay(newDate)))
+        }
+    }
+
+    fun updateMealPlanServings(plan: MealPlan, servings: Int) {
+        if (servings < 1) return
+        viewModelScope.launch {
+            repository.updateMealPlan(plan.copy(servings = servings))
+        }
+    }
+
+    fun deleteMealPlan(plan: MealPlan) {
+        viewModelScope.launch {
+            repository.deleteMealPlan(plan)
+        }
+    }
+
+    fun toggleMealPlanConsumed(plan: MealPlan) {
+        viewModelScope.launch {
+            repository.updateConsumedStatus(plan.id, !plan.isConsumed)
+        }
+    }
+
+    private fun getStartOfDay(timestamp: Long): Long {
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = timestamp
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis
+    }
+
+    private fun getStartOfWeek(timestamp: Long): Long {
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = timestamp
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+
+        // Auf Montag setzen
+        calendar.firstDayOfWeek = Calendar.MONDAY
+        calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+
+        return calendar.timeInMillis
     }
 }

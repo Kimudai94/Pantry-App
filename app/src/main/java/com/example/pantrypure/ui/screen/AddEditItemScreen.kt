@@ -166,7 +166,8 @@ fun AddEditItemContent(
                     NumberMode.DECIMAL,
                     label = "Quantity",
                     initial = quantity.toDoubleOrNull() ?: 1.0,
-                    onValueChange = { onQuantityChange(it.toString()) }
+                    onValueChange = { onQuantityChange(it.toString()) },
+                    modifier = Modifier.weight(1f)
                 )
 
                 var expanded by remember { mutableStateOf(false) }

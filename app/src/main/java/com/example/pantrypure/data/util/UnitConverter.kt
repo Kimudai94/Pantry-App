@@ -36,6 +36,18 @@ object UnitConverter {
         throw IllegalArgumentException("Incompatible units: $from and $to")
     }
 
+    fun getBaseUnit(unit: PantryUnit): PantryUnit {
+        return when {
+            isVolume(unit) -> PantryUnit.MILLILITERS
+            isWeight(unit) -> PantryUnit.GRAMS
+            else -> unit
+        }
+    }
+
+    fun isCompatible(unit1: PantryUnit, unit2: PantryUnit): Boolean {
+        return (isVolume(unit1) && isVolume(unit2)) || (isWeight(unit1) && isWeight(unit2)) || (unit1 == unit2)
+    }
+
     private fun isVolume(unit: PantryUnit): Boolean {
         return unit == PantryUnit.LITERS || unit == PantryUnit.MILLILITERS
     }
