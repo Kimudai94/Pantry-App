@@ -5,8 +5,10 @@ import com.example.pantrypure.data.dao.ConsumptionDao
 import com.example.pantrypure.data.dao.MealDao
 import com.example.pantrypure.data.dao.MealIngredientDao
 import com.example.pantrypure.data.dao.MealPlanDao
+import com.example.pantrypure.data.dao.OfferDao
 import com.example.pantrypure.data.model.AvailabilityCheck
 import com.example.pantrypure.data.model.ConsumptionRecord
+import com.example.pantrypure.data.model.ConsumptionSummary
 import com.example.pantrypure.data.model.Meal
 import com.example.pantrypure.data.model.MealConsumptionResult
 import com.example.pantrypure.data.model.MealIngredient
@@ -15,6 +17,7 @@ import com.example.pantrypure.data.model.MealPlan
 import com.example.pantrypure.data.model.MealPlanWithDetails
 import com.example.pantrypure.data.model.MealWithIngredients
 import com.example.pantrypure.data.model.MissingIngredient
+import com.example.pantrypure.data.model.Offer
 import com.example.pantrypure.data.model.PantryItem
 import com.example.pantrypure.data.util.UnitConverter
 import kotlinx.coroutines.flow.Flow
@@ -28,7 +31,8 @@ open class PantryRepository(
     private val consumptionDao: ConsumptionDao,
     private val mealDao: MealDao,
     private val mealIngredientDao: MealIngredientDao,
-    private val mealPlanDao: MealPlanDao
+    private val mealPlanDao: MealPlanDao,
+    private val offerDao: OfferDao
 ) {
     // Pantry Item methods
     open fun getAllItems(): Flow<List<PantryItem>> = pantryDao.getAllItems()
@@ -112,8 +116,17 @@ open class PantryRepository(
 
     // Consumption history methods
     open fun getConsumptionHistory(): Flow<List<ConsumptionRecord>> = consumptionDao.getAllHistory()
+    open fun getConsumptionSummary(since: Long): Flow<List<ConsumptionSummary>> = 
+        consumptionDao.getConsumptionSince(since)
     open suspend fun insertConsumptionRecord(record: ConsumptionRecord) = consumptionDao.insertRecord(record)
     open suspend fun clearHistory() = consumptionDao.clearHistory()
+
+    // Offer methods
+    open fun getActiveOffers(currentTime: Long): Flow<List<Offer>> = offerDao.getActiveOffers(currentTime)
+    open suspend fun insertOffers(offers: List<Offer>) = offerDao.insertOffers(offers)
+    open suspend fun deleteExpiredOffers(currentTime: Long) = offerDao.deleteExpiredOffers(currentTime)
+    open suspend fun updateOfferShoppingListStatus(offerId: Long, added: Boolean) = 
+        offerDao.updateShoppingListStatus(offerId, added)
 
     // Meal methods
     open suspend fun deleteMeal(meal: Meal) = withContext(Dispatchers.IO) {

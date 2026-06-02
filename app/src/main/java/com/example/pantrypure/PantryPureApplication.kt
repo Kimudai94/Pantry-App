@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
 class PantryPureApplication : Application() {
     private val database by lazy {
         Room.databaseBuilder(this, PantryDatabase::class.java, "pantry_database")
-            .addMigrations(PantryDatabase.MIGRATION_8_9)
+            .addMigrations(PantryDatabase.MIGRATION_8_9, PantryDatabase.MIGRATION_9_10)
             .fallbackToDestructiveMigration(false)
             .build()
     }
@@ -22,7 +22,8 @@ class PantryPureApplication : Application() {
             database.consumptionDao(),
             database.mealDao(),
             database.mealIngredientDao(),
-            database.mealPlanDao()
+            database.mealPlanDao(),
+            database.offerDao()
         )
     }
 

@@ -16,7 +16,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.Add
+import com.example.pantrypure.data.model.MissingIngredient
 import com.example.pantrypure.data.model.PantryItem
+import com.example.pantrypure.data.model.StockRecommendation
 import com.example.pantrypure.ui.viewmodel.PantryViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,6 +32,7 @@ fun ShoppingListScreen(
 ) {
     val items by viewModel.shoppingListItems.collectAsState()
     val plannedNeeds by viewModel.plannedShoppingNeeds.collectAsState()
+    val recommendations by viewModel.stockRecommendations.collectAsState()
 
     Scaffold(
         topBar = {
@@ -42,7 +47,7 @@ fun ShoppingListScreen(
         },
         contentWindowInsets = WindowInsets.safeDrawing
     ) { paddingValues ->
-        if (items.isEmpty() && plannedNeeds.isEmpty()) {
+        if (items.isEmpty() && plannedNeeds.isEmpty() && recommendations.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -90,6 +95,24 @@ fun ShoppingListScreen(
                     }
                 }
 
+                if (recommendations.isNotEmpty()) {
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            "Angebots-Empfehlungen",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                    items(recommendations, key = { "rec_${it.offer.id}" }) { rec ->
+                        RecommendationCard(
+                            recommendation = rec,
+                            onAddClick = { viewModel.addOfferToShoppingList(rec.offer) }
+                        )
+                    }
+                }
+
                 if (plannedNeeds.isNotEmpty()) {
                     item {
                         Spacer(Modifier.height(16.dp))
@@ -110,7 +133,79 @@ fun ShoppingListScreen(
 }
 
 @Composable
-fun PlannedNeedCard(need: com.example.pantrypure.data.model.MissingIngredient) {
+fun RecommendationCard(
+    recommendation: StockRecommendation,
+    onAddClick: () -> Unit
+) {
+    val offer = recommendation.offer
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
+        ),
+        border = if (offer.isAddedToShoppingList) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.LocalOffer,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.tertiary
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = offer.store,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                }
+                Text(
+                    text = offer.itemName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${"%.2f".format(offer.price)}€ (${"%.2f".format(offer.pricePerUnit)}€/${offer.offerUnit})",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = recommendation.reason,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (!offer.isAddedToShoppingList) {
+                Button(
+                    onClick = onAddClick,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Hinzufügen", style = MaterialTheme.typography.labelLarge)
+                }
+            } else {
+                Icon(
+                    Icons.Default.ShoppingCart,
+                    contentDescription = "Bereits auf Liste",
+                    tint = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun PlannedNeedCard(need: MissingIngredient) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(

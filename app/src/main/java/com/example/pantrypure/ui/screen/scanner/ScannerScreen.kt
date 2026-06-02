@@ -1,5 +1,8 @@
 package com.example.pantrypure.ui.screen.scanner
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -11,8 +14,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,14 +30,19 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.pantrypure.data.model.PantryUnit
+import com.example.pantrypure.ui.viewmodel.PantryViewModel
+import com.example.pantrypure.util.PdfReceiptHelper
 import com.example.pantrypure.util.ReceiptAnalyzer
 import com.example.pantrypure.util.ReceiptParser
 import com.google.mlkit.vision.text.Text
 import java.util.concurrent.Executors
 
+enum class ScanMode { RECEIPT, FLYER }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScannerScreen(
+    viewModel: PantryViewModel,
     onNavigateBack: () -> Unit,
     onIngredientsDetected: (List<ScannedIngredient>) -> Unit
 ) {
@@ -39,22 +50,72 @@ fun ScannerScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     val receiptParser = remember { ReceiptParser() }
+    val pdfHelper = remember { PdfReceiptHelper(context) }
     
     var detectedIngredients by remember { mutableStateOf(listOf<ScannedIngredient>()) }
     var isScanning by remember { mutableStateOf(true) }
+    var isProcessingPdf by remember { mutableStateOf(false) }
+    var scanMode by remember { mutableStateOf(ScanMode.RECEIPT) }
+
+    val pdfPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            isProcessingPdf = true
+            isScanning = false
+            pdfHelper.processPdfInvoice(
+                uri = it,
+                onPageProcessed = { visionText ->
+                    if (scanMode == ScanMode.FLYER) {
+                        viewModel.processFlyerText(visionText.text)
+                    } else {
+                        val ingredientNames = receiptParser.parseReceipt(visionText)
+                        val newIngredients = ingredientNames
+                            .filter { name -> detectedIngredients.none { it.name == name } }
+                            .map { name -> ScannedIngredient(name = name) }
+                        
+                        if (newIngredients.isNotEmpty()) {
+                            detectedIngredients = detectedIngredients + newIngredients
+                        }
+                    }
+                },
+                onError = { /* Handle error */ },
+                onFinished = { 
+                    isProcessingPdf = false 
+                    if (scanMode == ScanMode.FLYER) onNavigateBack()
+                }
+            )
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Bon scannen") },
+                title = { 
+                    Column {
+                        Text(if (scanMode == ScanMode.RECEIPT) "Bon scannen" else "Prospekt scannen")
+                        Text(
+                            if (scanMode == ScanMode.RECEIPT) "Erkennt Zutaten für den Bestand" else "Erkennt Angebote per Gemini KI",
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Zurück")
                     }
                 },
                 actions = {
-                    TextButton(onClick = { isScanning = !isScanning }) {
-                        Text(if (isScanning) "Review" else "Scan")
+                    IconButton(onClick = { 
+                        scanMode = if (scanMode == ScanMode.RECEIPT) ScanMode.FLYER else ScanMode.RECEIPT
+                    }) {
+                        Icon(
+                            if (scanMode == ScanMode.RECEIPT) Icons.AutoMirrored.Filled.MenuBook else Icons.Default.Receipt,
+                            contentDescription = "Modus wechseln"
+                        )
+                    }
+                    IconButton(onClick = { pdfPickerLauncher.launch("application/pdf") }) {
+                        Icon(Icons.Default.PictureAsPdf, contentDescription = "PDF importieren")
                     }
                 }
             )
@@ -72,7 +133,11 @@ fun ScannerScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
-            if (isScanning) {
+            if (isProcessingPdf) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else if (isScanning) {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     AndroidView(
                         factory = { ctx ->

@@ -4,6 +4,7 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.google.devtools.ksp)
+  alias(libs.plugins.secrets.gradle.plugin)
 }
 
 val mockitoAgent = configurations.create("mockitoAgent") {
@@ -74,6 +75,7 @@ android {
   }
   buildFeatures {
     compose = true
+    buildConfig = true
   }
 
 }
@@ -110,6 +112,7 @@ dependencies {
   implementation(libs.logging.interceptor)
   implementation(libs.okhttp)
   implementation(libs.moshi.kotlin)
+  implementation(libs.generative.ai)
   implementation(libs.androidx.datastore.preferences)
   implementation(libs.material)
   testImplementation(libs.junit)

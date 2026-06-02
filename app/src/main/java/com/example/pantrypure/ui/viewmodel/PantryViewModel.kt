@@ -10,10 +10,14 @@ import com.example.pantrypure.data.model.MealIngredient
 import com.example.pantrypure.data.model.MealPlan
 import com.example.pantrypure.data.model.MealPlanWithDetails
 import com.example.pantrypure.data.model.MealWithIngredients
-import com.example.pantrypure.data.model.PantryItem
-import com.example.pantrypure.data.repository.PantryRepository
 import com.example.pantrypure.data.model.MissingIngredient
+import com.example.pantrypure.data.model.Offer
+import com.example.pantrypure.data.model.PantryItem
 import com.example.pantrypure.data.model.PantryUnit
+import com.example.pantrypure.data.model.ConsumptionSummary
+import com.example.pantrypure.data.model.StockRecommendation
+import com.example.pantrypure.data.repository.GeminiRepository
+import com.example.pantrypure.data.repository.PantryRepository
 import com.example.pantrypure.data.util.UnitConverter
 import com.example.pantrypure.ui.screen.scanner.ScannedIngredient
 import kotlinx.coroutines.flow.*
@@ -23,7 +27,37 @@ import java.util.Calendar
 enum class SortOption { NAME, EXPIRY_DATE }
 enum class FilterOption { ALL, OVERDUE, EXPIRING_SOON }
 
-class PantryViewModel(private val repository: PantryRepository) : ViewModel() {
+class PantryViewModel(
+    private val repository: PantryRepository,
+    private val geminiRepository: GeminiRepository? = null
+) : ViewModel() {
+
+    init {
+        viewModelScope.launch {
+            repository.deleteExpiredOffers(System.currentTimeMillis())
+        }
+    }
+
+    // ============== AI / Gemini State ==============
+    private val _isExtractingOffers = MutableStateFlow(false)
+    val isExtractingOffers: StateFlow<Boolean> = _isExtractingOffers
+
+    fun processFlyerText(text: String) {
+        val gemini = geminiRepository ?: return
+        viewModelScope.launch {
+            _isExtractingOffers.value = true
+            try {
+                val extractedOffers = gemini.extractOffersFromText(text)
+                if (extractedOffers.isNotEmpty()) {
+                    repository.insertOffers(extractedOffers)
+                }
+            } catch (e: Exception) {
+                // Log error
+            } finally {
+                _isExtractingOffers.value = false
+            }
+        }
+    }
 
     // ============== Pantry Item State ==============
     private val _sortOption = MutableStateFlow(SortOption.EXPIRY_DATE)
@@ -149,79 +183,6 @@ class PantryViewModel(private val repository: PantryRepository) : ViewModel() {
         }
     }
 
-    // ============== Meal State ==============
-    private val _selectedMealCategory = MutableStateFlow(MealCategory.OTHER)
-    val selectedMealCategory: StateFlow<MealCategory> = _selectedMealCategory
-    val allMealsWithIngredients: StateFlow<List<MealWithIngredients>> = repository.getAllMealsWithIngredients()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
-    val mealsByCategory: StateFlow<List<MealWithIngredients>> = combine(
-        allMealsWithIngredients,
-        _selectedMealCategory
-    ) { meals, category ->
-        meals.filter { it.meal.category == category }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
-    )
-    fun setMealCategory(category: MealCategory) { _selectedMealCategory.value = category }
-
-    private val _mealOperationState = MutableStateFlow<MealOperationState>(MealOperationState.Idle)
-    val mealOperationState: StateFlow<MealOperationState> = _mealOperationState
-    fun clearMealOperationState() { _mealOperationState.value = MealOperationState.Idle }
-
-    // ============== Meal Methods ==============
-
-    suspend fun getMealWithIngredients(mealId: Long): MealWithIngredients? {
-        return repository.getMealWithIngredients(mealId)
-    }
-
-    fun saveMeal(meal: Meal, ingredients: List<MealIngredient>) {
-        viewModelScope.launch {
-            try {
-                repository.saveMealWithIngredients(meal, ingredients)
-                _mealOperationState.value = MealOperationState.Success(
-                    if (meal.id == 0L) "Mahlzeit erstellt" else "Mahlzeit aktualisiert"
-                )
-            } catch (e: Exception) {
-                _mealOperationState.value = MealOperationState.Error(e.message ?: "Fehler beim Speichern")
-            }
-        }
-    }
-
-    fun consumeMeal(mealId: Long) {
-        viewModelScope.launch {
-            _mealOperationState.value = MealOperationState.Loading
-
-            val result = repository.consumeMeal(mealId)
-            _mealOperationState.value = when (result) {
-                MealConsumptionResult.Success ->
-                    MealOperationState.Success("Mahlzeit verbraucht")
-                MealConsumptionResult.NotFound ->
-                    MealOperationState.Error("Mahlzeit nicht gefunden")
-                is MealConsumptionResult.InsufficientIngredients ->
-                    MealOperationState.InsufficientIngredients(result.missingIngredients)
-                is MealConsumptionResult.Error ->
-                    MealOperationState.Error(result.message)
-            }
-        }
-    }
-
-    fun deleteMeal(meal: Meal) {
-        viewModelScope.launch {
-            try {
-                repository.deleteMeal(meal)
-                _mealOperationState.value = MealOperationState.Success("Mahlzeit gelöscht")
-            } catch (e: Exception) {
-                _mealOperationState.value = MealOperationState.Error(e.message ?: "Fehler beim Löschen")
-            }
-        }
-    }
-
     // ============== Meal Plan State ==============
     val _currentPlannerDate = MutableStateFlow(getStartOfWeek(System.currentTimeMillis()))
     val currentPlannerDate: StateFlow<Long> = _currentPlannerDate
@@ -298,6 +259,150 @@ class PantryViewModel(private val repository: PantryRepository) : ViewModel() {
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    // ============== Offer & Recommendation State ==============
+    val activeOffers: StateFlow<List<Offer>> = repository.getActiveOffers(System.currentTimeMillis())
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    /**
+     * Berechnet den durchschnittlichen Wochenverbrauch der letzten 4 Wochen.
+     */
+    val weeklyConsumptionSummary: StateFlow<List<ConsumptionSummary>> = repository.getConsumptionSummary(
+        System.currentTimeMillis() - (28 * 24 * 60 * 60 * 1000L) // Letzte 4 Wochen
+    ).map { summary ->
+        summary.map { it.copy(totalConsumed = it.totalConsumed / 4.0) }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    /**
+     * Kombiniert Angebote, Inventar und Verbrauch, um Käufe zu empfehlen.
+     */
+    val stockRecommendations: StateFlow<List<StockRecommendation>> = combine(
+        activeOffers,
+        pantryItems,
+        weeklyConsumptionSummary,
+        plannedShoppingNeeds
+    ) { offers, inventory, consumption, planned ->
+        offers.mapNotNull { offer ->
+            val weeklyNeed = consumption.find { it.itemName.equals(offer.itemName, ignoreCase = true) }?.totalConsumed ?: 0.0
+            val currentStock = inventory.filter { it.name.equals(offer.itemName, ignoreCase = true) }.sumOf { 
+                try { UnitConverter.convert(it.quantity, it.unit, offer.offerUnit) } catch(e: Exception) { 0.0 }
+            }
+            val futurePlanned = planned.find { it.itemName.equals(offer.itemName, ignoreCase = true) }?.deficit ?: 0.0
+            
+            // Logik: Wenn Vorrat < (Wochenverbrauch * 2) + geplanter Bedarf
+            val threshold = (weeklyNeed * 2.0) + futurePlanned
+            
+            if (currentStock < threshold || futurePlanned > 0) {
+                StockRecommendation(
+                    offer = offer,
+                    reason = if (futurePlanned > 0) "Geplant für Mahlzeiten" else "Niedriger Vorrat (reicht < 2 Wochen)",
+                    suggestedQuantity = (threshold - currentStock).coerceAtLeast(offer.offerQuantity)
+                )
+            } else null
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    fun addOfferToShoppingList(offer: Offer) {
+        viewModelScope.launch {
+            repository.updateOfferShoppingListStatus(offer.id, true)
+            // Auch als Platzhalter in die normale Liste, damit es dort erscheint
+            repository.insertItem(
+                PantryItem(
+                    name = offer.itemName,
+                    quantity = 0.0,
+                    unit = offer.offerUnit,
+                    isOnShoppingList = true,
+                    neededQuantity = offer.offerQuantity,
+                    notes = "Angebot bei ${offer.store} (${offer.price}€)"
+                )
+            )
+        }
+    }
+
+    // ============== Meal State ==============
+    private val _selectedMealCategory = MutableStateFlow(MealCategory.OTHER)
+    val selectedMealCategory: StateFlow<MealCategory> = _selectedMealCategory
+    val allMealsWithIngredients: StateFlow<List<MealWithIngredients>> = repository.getAllMealsWithIngredients()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+    val mealsByCategory: StateFlow<List<MealWithIngredients>> = combine(
+        allMealsWithIngredients,
+        _selectedMealCategory
+    ) { meals, category ->
+        meals.filter { it.meal.category == category }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+    fun setMealCategory(category: MealCategory) { _selectedMealCategory.value = category }
+
+    private val _mealOperationState = MutableStateFlow<MealOperationState>(MealOperationState.Idle)
+    val mealOperationState: StateFlow<MealOperationState> = _mealOperationState
+    fun clearMealOperationState() { _mealOperationState.value = MealOperationState.Idle }
+
+    // ============== Meal Methods ==============
+
+    suspend fun getMealWithIngredients(mealId: Long): MealWithIngredients? {
+        return repository.getMealWithIngredients(mealId)
+    }
+
+    fun saveMeal(meal: Meal, ingredients: List<MealIngredient>) {
+        viewModelScope.launch {
+            try {
+                repository.saveMealWithIngredients(meal, ingredients)
+                _mealOperationState.value = MealOperationState.Success(
+                    if (meal.id == 0L) "Mahlzeit erstellt" else "Mahlzeit aktualisiert"
+                )
+            } catch (e: Exception) {
+                _mealOperationState.value = MealOperationState.Error(e.message ?: "Fehler beim Speichern")
+            }
+        }
+    }
+
+    fun consumeMeal(mealId: Long) {
+        viewModelScope.launch {
+            _mealOperationState.value = MealOperationState.Loading
+
+            val result = repository.consumeMeal(mealId)
+            _mealOperationState.value = when (result) {
+                MealConsumptionResult.Success ->
+                    MealOperationState.Success("Mahlzeit verbraucht")
+                MealConsumptionResult.NotFound ->
+                    MealOperationState.Error("Mahlzeit nicht gefunden")
+                is MealConsumptionResult.InsufficientIngredients ->
+                    MealOperationState.InsufficientIngredients(result.missingIngredients)
+                is MealConsumptionResult.Error ->
+                    MealOperationState.Error(result.message)
+            }
+        }
+    }
+
+    fun deleteMeal(meal: Meal) {
+        viewModelScope.launch {
+            try {
+                repository.deleteMeal(meal)
+                _mealOperationState.value = MealOperationState.Success("Mahlzeit gelöscht")
+            } catch (e: Exception) {
+                _mealOperationState.value = MealOperationState.Error(e.message ?: "Fehler beim Löschen")
+            }
+        }
+    }
 
     private fun simulateConsumption(
         inventory: List<PantryItem>,

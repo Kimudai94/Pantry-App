@@ -14,9 +14,12 @@ class ExpiryCheckWorker(
 
     override suspend fun doWork(): Result {
         val repository = (applicationContext as PantryPureApplication).repository
-        val items = repository.getAllItems().first()
-        
         val now = System.currentTimeMillis()
+
+        // Clean up expired offers
+        repository.deleteExpiredOffers(now)
+
+        val items = repository.getAllItems().first()
         val expiringSoonOrOverdueCount = items.count { item ->
             if (item.expiryDate == null) return@count false
             val thresholdMillis = item.expiryThresholdDays * 24 * 60 * 60 * 1000L

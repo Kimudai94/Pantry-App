@@ -14,8 +14,16 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.pantrypure.data.repository.GeminiRepository
 import com.example.pantrypure.ui.navigation.Screen
-import com.example.pantrypure.ui.screen.*
+import com.example.pantrypure.ui.screen.InventoryListScreen
+import com.example.pantrypure.ui.screen.ShoppingListScreen
+import com.example.pantrypure.ui.screen.HistoryScreen
+import com.example.pantrypure.ui.screen.MealsListScreen
+import com.example.pantrypure.ui.screen.AddEditItemScreen
+import com.example.pantrypure.ui.screen.AddEditMealScreen
+import com.example.pantrypure.ui.screen.MealDetailScreen
+import com.example.pantrypure.ui.screen.MealPlannerScreen
 import com.example.pantrypure.ui.screen.scanner.ScannerScreen
 import com.example.pantrypure.ui.theme.PantryPureTheme
 import com.example.pantrypure.ui.viewmodel.PantryViewModel
@@ -30,7 +38,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private val viewModel: PantryViewModel by viewModels {
-        PantryViewModelFactory((application as PantryPureApplication).repository)
+        val geminiRepo = GeminiRepository(apiKey = BuildConfig.GEMINI_API_KEY)
+        PantryViewModelFactory((application as PantryPureApplication).repository, geminiRepo)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -97,6 +106,7 @@ fun PantryPureApp(viewModel: PantryViewModel) {
         }
         composable(Screen.Scanner.route) {
             ScannerScreen(
+                viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() },
                 onIngredientsDetected = { ingredients ->
                     viewModel.addIngredientsFromScanner(ingredients)
