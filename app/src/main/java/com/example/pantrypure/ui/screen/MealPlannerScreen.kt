@@ -2,8 +2,8 @@ package com.example.pantrypure.ui.screen
 
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -45,6 +45,15 @@ fun MealPlannerScreen(
     val dayBounds = remember { mutableStateMapOf<Long, androidx.compose.ui.geometry.Rect>() }
     
     val sdfDay = SimpleDateFormat("EEEE, dd.MM.", Locale.getDefault())
+
+    val days = remember(currentStartDate) {
+        (0..6).map { offset ->
+            Calendar.getInstance().apply {
+                timeInMillis = currentStartDate
+                add(Calendar.DAY_OF_YEAR, offset)
+            }.timeInMillis
+        }
+    }
     
     Scaffold(
         topBar = {
@@ -66,22 +75,15 @@ fun MealPlannerScreen(
             )
         }
     ) { paddingValues ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Generate 7 days starting from Monday
-            val days = (0..6).map { offset ->
-                Calendar.getInstance().apply {
-                    timeInMillis = currentStartDate
-                    add(Calendar.DAY_OF_YEAR, offset)
-                }.timeInMillis
-            }
-            
-            items(days) { dayTimestamp ->
+            days.forEach { dayTimestamp ->
                 val plansForDay = weeklyPlans.filter { it.plan.plannedDate == dayTimestamp }
                 
                 DaySection(

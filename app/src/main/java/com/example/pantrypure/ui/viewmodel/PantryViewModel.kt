@@ -13,6 +13,7 @@ import com.example.pantrypure.data.model.MealWithIngredients
 import com.example.pantrypure.data.model.PantryItem
 import com.example.pantrypure.data.repository.PantryRepository
 import com.example.pantrypure.data.model.MissingIngredient
+import com.example.pantrypure.data.model.PantryUnit
 import com.example.pantrypure.data.util.UnitConverter
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -238,18 +239,43 @@ class PantryViewModel(private val repository: PantryRepository) : ViewModel() {
     val plannedShoppingNeeds: StateFlow<List<MissingIngredient>> = mealPlanSimulation
         .map { simulation ->
             simulation.values.flatten()
-                .groupBy { it.itemName.lowercase() to it.unit }
-                .map { (key, group) ->
-                    MissingIngredient(
-                        pantryItemId = group.first().pantryItemId,
-                        itemName = group.first().itemName,
-                        unit = key.second,
-                        required = group.sumOf { it.required },
-                        available = group.first().available,
-                        deficit = group.sumOf { it.deficit }
-                    )
+                .groupBy { it.itemName.trim().lowercase() }
+                .mapNotNull { (name, group) ->
+                    // Wir gruppieren innerhalb des Namens noch nach kompatiblen Einheiten (z.B. L/ml vs. Stücke)
+                    val subgroupedByBaseUnit = group.groupBy { UnitConverter.getBaseUnit(it.unit) }
+                    
+                    subgroupedByBaseUnit.map { (baseUnit, subGroup) ->
+                        val totalRequiredInBase = subGroup.sumOf { UnitConverter.convert(it.required, it.unit, baseUnit) }
+                        val totalDeficitInBase = subGroup.sumOf { UnitConverter.convert(it.deficit, it.unit, baseUnit) }
+                        
+                        // Versuche, das Ergebnis wieder in eine größere Einheit zu konvertieren, wenn sinnvoll
+                        var finalUnit = baseUnit
+                        var finalRequired = totalRequiredInBase
+                        var finalDeficit = totalDeficitInBase
+                        
+                        if (baseUnit == PantryUnit.MILLILITERS && totalRequiredInBase >= 1000) {
+                            finalUnit = PantryUnit.LITERS
+                            finalRequired = totalRequiredInBase / 1000.0
+                            finalDeficit = totalDeficitInBase / 1000.0
+                        } else if (baseUnit == PantryUnit.GRAMS && totalRequiredInBase >= 1000) {
+                            finalUnit = PantryUnit.KILOGRAMS
+                            finalRequired = totalRequiredInBase / 1000.0
+                            finalDeficit = totalDeficitInBase / 1000.0
+                        }
+
+                        val first = subGroup.first()
+                        MissingIngredient(
+                            pantryItemId = first.pantryItemId,
+                            itemName = first.itemName.trim(),
+                            unit = finalUnit,
+                            required = finalRequired,
+                            available = (finalRequired - finalDeficit).coerceAtLeast(0.0),
+                            deficit = finalDeficit
+                        )
+                    }
                 }
-                .filter { it.deficit > 0 }
+                .flatten()
+                .filter { it.deficit > 0.001 }
                 .sortedBy { it.itemName }
         }.stateIn(
             scope = viewModelScope,
@@ -315,7 +341,21 @@ class PantryViewModel(private val repository: PantryRepository) : ViewModel() {
                 }
             }
             if (missingForPlan.isNotEmpty()) {
-                missingResults[planWithDetails.plan.id] = missingForPlan
+                val aggregatedMissing = missingForPlan.groupBy { it.itemName.trim().lowercase() to it.unit }
+                    .map { (key, group) ->
+                        val first = group.first()
+                        val totalRequired = group.sumOf { it.required }
+                        val totalDeficit = group.sumOf { it.deficit }
+                        MissingIngredient(
+                            pantryItemId = first.pantryItemId,
+                            itemName = first.itemName.trim(),
+                            unit = key.second,
+                            required = totalRequired,
+                            available = (totalRequired - totalDeficit).coerceAtLeast(0.0),
+                            deficit = totalDeficit
+                        )
+                    }
+                missingResults[planWithDetails.plan.id] = aggregatedMissing
             }
         }
         return missingResults
