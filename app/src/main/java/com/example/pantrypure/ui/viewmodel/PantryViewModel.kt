@@ -248,16 +248,16 @@ class PantryViewModel(private val repository: PantryRepository) : ViewModel() {
                         val totalRequiredInBase = subGroup.sumOf { UnitConverter.convert(it.required, it.unit, baseUnit) }
                         val totalDeficitInBase = subGroup.sumOf { UnitConverter.convert(it.deficit, it.unit, baseUnit) }
                         
-                        // Versuche, das Ergebnis wieder in eine größere Einheit zu konvertieren, wenn sinnvoll
+                        // Liter und KG als Standard für die Zusammenfassung verwenden
                         var finalUnit = baseUnit
                         var finalRequired = totalRequiredInBase
                         var finalDeficit = totalDeficitInBase
                         
-                        if (baseUnit == PantryUnit.MILLILITERS && totalRequiredInBase >= 1000) {
+                        if (baseUnit == PantryUnit.MILLILITERS) {
                             finalUnit = PantryUnit.LITERS
                             finalRequired = totalRequiredInBase / 1000.0
                             finalDeficit = totalDeficitInBase / 1000.0
-                        } else if (baseUnit == PantryUnit.GRAMS && totalRequiredInBase >= 1000) {
+                        } else if (baseUnit == PantryUnit.GRAMS) {
                             finalUnit = PantryUnit.KILOGRAMS
                             finalRequired = totalRequiredInBase / 1000.0
                             finalDeficit = totalDeficitInBase / 1000.0

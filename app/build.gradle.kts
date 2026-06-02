@@ -4,6 +4,10 @@ plugins {
   alias(libs.plugins.google.devtools.ksp)
 }
 
+val mockitoAgent = configurations.create("mockitoAgent") {
+    isTransitive = false
+}
+
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
@@ -92,6 +96,7 @@ dependencies {
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)
   testImplementation(libs.mockito.core)
+  mockitoAgent(libs.mockito.core)
   testImplementation(libs.mockito.kotlin)
   androidTestImplementation(libs.androidx.junit)
   androidTestImplementation(libs.androidx.room.testing)
@@ -106,4 +111,10 @@ dependencies {
   debugImplementation(libs.androidx.compose.ui.test.manifest)
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
+}
+
+tasks.withType<Test>().configureEach {
+    jvmArgumentProviders.add(CommandLineArgumentProvider {
+        listOf("-javaagent:${mockitoAgent.singleFile.absolutePath}")
+    })
 }

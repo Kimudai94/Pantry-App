@@ -121,7 +121,7 @@ class PantryViewModelTest {
         val needs = viewModel.plannedShoppingNeeds.value
         assertEquals(1, needs.size)
         assertEquals("Tomato", needs[0].itemName)
-        assertEquals(300.0, needs[0].deficit, 0.001)
+        assertEquals(0.3, needs[0].deficit, 0.001)
         collectJob.cancel()
     }
 
@@ -155,7 +155,7 @@ class PantryViewModelTest {
 
         val needs = viewModel.plannedShoppingNeeds.value
         assertEquals(1, needs.size)
-        assertEquals(100.0, needs[0].deficit, 0.001)
+        assertEquals(0.1, needs[0].deficit, 0.001)
         collectJob.cancel()
     }
 
@@ -215,7 +215,80 @@ class PantryViewModelTest {
 
         val needs = viewModel.plannedShoppingNeeds.value
         assertEquals(1, needs.size)
-        assertEquals(1000.0, needs[0].deficit, 0.001)
+        assertEquals(1.0, needs[0].deficit, 0.001)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun `plannedShoppingNeeds aggregates mixed units to standard units`() = runTest {
+        val monday = Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+            set(Calendar.HOUR_OF_DAY, 0)
+        }.timeInMillis
+
+        whenever(repository.getMealPlansInRange(any(), any())).thenReturn(flowOf(listOf(
+            MealPlanWithDetails(
+                plan = MealPlan(id = 1, mealId = 10, plannedDate = monday, servings = 1),
+                meal = Meal(id = 10, name = "Milk shake"),
+                ingredients = listOf(
+                    MealIngredientWithName(id = 1, mealId = 10, ingredientName = "Milk", requiredQuantity = 1.0, requiredUnit = PantryUnit.LITERS)
+                )
+            ),
+            MealPlanWithDetails(
+                plan = MealPlan(id = 2, mealId = 11, plannedDate = monday, servings = 1),
+                meal = Meal(id = 11, name = "Coffee"),
+                ingredients = listOf(
+                    MealIngredientWithName(id = 2, mealId = 11, ingredientName = "Milk", requiredQuantity = 200.0, requiredUnit = PantryUnit.MILLILITERS)
+                )
+            )
+        )))
+
+        whenever(repository.getAllItems()).thenReturn(flowOf(emptyList()))
+
+        viewModel = PantryViewModel(repository)
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.plannedShoppingNeeds.collect()
+        }
+        runCurrent()
+
+        val needs = viewModel.plannedShoppingNeeds.value
+        assertEquals(1, needs.size)
+        assertEquals("Milk", needs[0].itemName)
+        assertEquals(PantryUnit.LITERS, needs[0].unit)
+        assertEquals(1.2, needs[0].deficit, 0.001)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun `plannedShoppingNeeds aggregates small weights to kg standard`() = runTest {
+        val monday = Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+            set(Calendar.HOUR_OF_DAY, 0)
+        }.timeInMillis
+
+        whenever(repository.getMealPlansInRange(any(), any())).thenReturn(flowOf(listOf(
+            MealPlanWithDetails(
+                plan = MealPlan(id = 1, mealId = 10, plannedDate = monday, servings = 1),
+                meal = Meal(id = 10, name = "Baking"),
+                ingredients = listOf(
+                    MealIngredientWithName(id = 1, mealId = 10, ingredientName = "Flour", requiredQuantity = 500.0, requiredUnit = PantryUnit.GRAMS)
+                )
+            )
+        )))
+
+        whenever(repository.getAllItems()).thenReturn(flowOf(emptyList()))
+
+        viewModel = PantryViewModel(repository)
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.plannedShoppingNeeds.collect()
+        }
+        runCurrent()
+
+        val needs = viewModel.plannedShoppingNeeds.value
+        assertEquals(1, needs.size)
+        assertEquals("Flour", needs[0].itemName)
+        assertEquals(PantryUnit.KILOGRAMS, needs[0].unit)
+        assertEquals(0.5, needs[0].deficit, 0.001)
         collectJob.cancel()
     }
 }
