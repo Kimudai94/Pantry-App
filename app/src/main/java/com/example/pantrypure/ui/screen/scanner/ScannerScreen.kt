@@ -1,20 +1,32 @@
 package com.example.pantrypure.ui.screen.scanner
 
+import android.content.Context
 import android.net.Uri
+import android.util.Size
+import android.view.MotionEvent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -23,6 +35,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -34,7 +47,11 @@ import com.example.pantrypure.ui.viewmodel.PantryViewModel
 import com.example.pantrypure.util.PdfReceiptHelper
 import com.example.pantrypure.util.ReceiptAnalyzer
 import com.example.pantrypure.util.ReceiptParser
+import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
 enum class ScanMode { RECEIPT, FLYER }
@@ -51,6 +68,12 @@ fun ScannerScreen(
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     val receiptParser = remember { ReceiptParser() }
     val pdfHelper = remember { PdfReceiptHelper(context) }
+    
+    val imageCapture = remember { 
+        ImageCapture.Builder()
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+            .build() 
+    }
     
     var detectedIngredients by remember { mutableStateOf(listOf<ScannedIngredient>()) }
     var isScanning by remember { mutableStateOf(true) }
@@ -146,23 +169,39 @@ fun ScannerScreen(
 
                             cameraProviderFuture.addListener({
                                 val cameraProvider = cameraProviderFuture.get()
-                                val preview = Preview.Builder().build().also {
-                                    it.setSurfaceProvider(previewView.surfaceProvider)
-                                }
+                                
+                                val resolutionSelector = ResolutionSelector.Builder()
+                                    .setResolutionStrategy(
+                                        ResolutionStrategy(
+                                            Size(1280, 720),
+                                            ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
+                                        )
+                                    )
+                                    .build()
+
+                                val preview = Preview.Builder()
+                                    .setResolutionSelector(resolutionSelector)
+                                    .build()
+                                    .also {
+                                        it.setSurfaceProvider(previewView.surfaceProvider)
+                                    }
 
                                 val imageAnalysis = ImageAnalysis.Builder()
                                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                    .setResolutionSelector(resolutionSelector)
                                     .build()
                                     .also {
                                         it.setAnalyzer(cameraExecutor, ReceiptAnalyzer { visionText: Text ->
-                                            val ingredientNames = receiptParser.parseReceipt(visionText)
-                                            if (ingredientNames.isNotEmpty()) {
-                                                val newIngredients = ingredientNames
-                                                    .filter { name -> detectedIngredients.none { it.name == name } }
-                                                    .map { name -> ScannedIngredient(name = name) }
-                                                
-                                                if (newIngredients.isNotEmpty()) {
-                                                    detectedIngredients = detectedIngredients + newIngredients
+                                            if (scanMode == ScanMode.RECEIPT) {
+                                                val ingredientNames = receiptParser.parseReceipt(visionText)
+                                                if (ingredientNames.isNotEmpty()) {
+                                                    val newIngredients = ingredientNames
+                                                        .filter { name -> detectedIngredients.none { it.name == name } }
+                                                        .map { name -> ScannedIngredient(name = name) }
+                                                    
+                                                    if (newIngredients.isNotEmpty()) {
+                                                        detectedIngredients = detectedIngredients + newIngredients
+                                                    }
                                                 }
                                             }
                                         })
@@ -170,12 +209,25 @@ fun ScannerScreen(
 
                                 try {
                                     cameraProvider.unbindAll()
-                                    cameraProvider.bindToLifecycle(
+                                    val camera = cameraProvider.bindToLifecycle(
                                         lifecycleOwner,
                                         CameraSelector.DEFAULT_BACK_CAMERA,
                                         preview,
-                                        imageAnalysis
+                                        imageAnalysis,
+                                        imageCapture
                                     )
+
+                                    previewView.setOnTouchListener { _, event ->
+                                        if (event.action == MotionEvent.ACTION_UP) {
+                                            val factory = previewView.meteringPointFactory
+                                            val point = factory.createPoint(event.x, event.y)
+                                            val action = FocusMeteringAction.Builder(point).build()
+                                            camera.cameraControl.startFocusAndMetering(action)
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    }
                                 } catch (exc: Exception) {
                                     // Handle error
                                 }
@@ -185,13 +237,54 @@ fun ScannerScreen(
                         modifier = Modifier.fillMaxSize()
                     )
                     
+                    // Photo Button
+                    IconButton(
+                        onClick = {
+                            takePhoto(
+                                imageCapture = imageCapture,
+                                context = context,
+                                executor = ContextCompat.getMainExecutor(context),
+                                onTextDetected = { visionText ->
+                                    if (scanMode == ScanMode.FLYER) {
+                                        viewModel.processFlyerText(visionText.text)
+                                        onNavigateBack()
+                                    } else {
+                                        val ingredientNames = receiptParser.parseReceipt(visionText)
+                                        val newIngredients = ingredientNames
+                                            .filter { name -> detectedIngredients.none { it.name == name } }
+                                            .map { name -> ScannedIngredient(name = name) }
+                                        
+                                        if (newIngredients.isNotEmpty()) {
+                                            detectedIngredients = detectedIngredients + newIngredients
+                                        }
+                                        isScanning = false
+                                    }
+                                }
+                            )
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 80.dp)
+                            .size(72.dp)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.7f), CircleShape)
+                    ) {
+                        Icon(
+                            Icons.Default.Camera,
+                            contentDescription = "Foto machen",
+                            modifier = Modifier.size(40.dp),
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+
                     // Scanner Overlay
                     Surface(
                         modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
                     ) {
                         Text(
-                            "Bon in den Fokus rücken. Zutaten werden automatisch erkannt.",
+                            if (scanMode == ScanMode.RECEIPT) 
+                                "Bon in den Fokus rücken oder Foto machen." 
+                            else "Prospekt fotografieren für Gemini Analyse.",
                             modifier = Modifier.padding(16.dp),
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -222,6 +315,34 @@ fun ScannerScreen(
             }
         }
     }
+}
+
+private fun takePhoto(
+    imageCapture: ImageCapture,
+    context: Context,
+    executor: Executor,
+    onTextDetected: (Text) -> Unit
+) {
+    imageCapture.takePicture(executor, object : ImageCapture.OnImageCapturedCallback() {
+        @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
+        override fun onCaptureSuccess(imageProxy: ImageProxy) {
+            val mediaImage = imageProxy.image
+            if (mediaImage != null) {
+                val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+                val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+                
+                recognizer.process(image)
+                    .addOnSuccessListener { visionText ->
+                        onTextDetected(visionText)
+                    }
+                    .addOnCompleteListener {
+                        imageProxy.close()
+                    }
+            } else {
+                imageProxy.close()
+            }
+        }
+    })
 }
 
 @Composable

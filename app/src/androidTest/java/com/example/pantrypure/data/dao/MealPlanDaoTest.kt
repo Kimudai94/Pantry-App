@@ -5,7 +5,9 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.pantrypure.data.database.PantryDatabase
-import com.example.pantrypure.data.model.*
+import com.example.pantrypure.data.model.Meal
+import com.example.pantrypure.data.model.MealCategory
+import com.example.pantrypure.data.model.MealPlan
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After

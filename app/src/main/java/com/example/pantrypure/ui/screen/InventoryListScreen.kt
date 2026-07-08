@@ -4,18 +4,23 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.pantrypure.data.model.ExpiryStatus
 import com.example.pantrypure.data.model.PantryItem
+import com.example.pantrypure.data.model.getExpiryStatus
 import com.example.pantrypure.ui.viewmodel.FilterOption
 import com.example.pantrypure.ui.viewmodel.PantryViewModel
 import com.example.pantrypure.ui.viewmodel.SortOption
@@ -35,36 +40,30 @@ fun InventoryListScreen(
     onPlannerClick: () -> Unit = {},
     onScannerClick: () -> Unit = {}
 ) {
-    val items by viewModel.pantryItems.collectAsState()
-    val sortOption by viewModel.sortOption.collectAsState()
-    val filterOption by viewModel.filterOption.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
+    val items by viewModel.pantryItems.collectAsStateWithLifecycle()
+    val sortOption by viewModel.sortOption.collectAsStateWithLifecycle()
+    val filterOption by viewModel.filterOption.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
 
     val scope = rememberCoroutineScope()
     var itemToDelete by remember { mutableStateOf<PantryItem?>(null) }
-    var showSortMenu by remember { mutableStateOf(false) }
-    var showFilterMenu by remember { mutableStateOf(false) }
+
+    val emptyStateMessage by remember {
+        derivedStateOf {
+            if (searchQuery.isEmpty()) "Your pantry is empty" else "No items found for '$searchQuery'"
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("PantryPure") },
                 actions = {
-                    IconButton(onClick = onScannerClick) {
-                        Icon(Icons.Default.QrCodeScanner, contentDescription = "Bon scannen")
-                    }
-                    IconButton(onClick = onPlannerClick) {
-                        Icon(Icons.Default.CalendarMonth, contentDescription = "Meal Planner")
-                    }
-                    IconButton(onClick = onMealsClick) {
-                        Icon(Icons.Default.Restaurant, contentDescription = "Mahlzeiten")
-                    }
-                    IconButton(onClick = onHistoryClick) {
-                        Icon(Icons.Default.History, contentDescription = "History")
-                    }
-                    IconButton(onClick = onShoppingListClick) {
-                        Icon(Icons.Default.ShoppingCart, contentDescription = "Shopping List")
-                    }
+                    IconButton(onClick = onScannerClick) { Icon(Icons.Default.QrCodeScanner, "Bon scannen") }
+                    IconButton(onClick = onPlannerClick) { Icon(Icons.Default.CalendarMonth, "Meal Planner") }
+                    IconButton(onClick = onMealsClick) { Icon(Icons.Default.Restaurant, "Mahlzeiten") }
+                    IconButton(onClick = onHistoryClick) { Icon(Icons.Default.History, "History") }
+                    IconButton(onClick = onShoppingListClick) { Icon(Icons.Default.ShoppingCart, "Shopping List") }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -73,89 +72,30 @@ fun InventoryListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddItemClick) {
-                Icon(Icons.Default.Add, contentDescription = "Add Item")
-            }
+            FloatingActionButton(onClick = onAddItemClick) { Icon(Icons.Default.Add, "Add Item") }
         },
         contentWindowInsets = WindowInsets.safeDrawing
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.setSearchQuery(it) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Search items...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                trailingIcon = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(end = 4.dp)
-                    ) {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Clear search")
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(4.dp))
-                        IconButton(onClick = { showSortMenu = true }) {
-                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
-                        }
-                        DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                            SortOption.entries.forEach { option ->
-                                DropdownMenuItem(
-                                    text = { Text("Sort by ${option.name.lowercase().replace("_", " ")}") },
-                                    onClick = {
-                                        viewModel.setSortOption(option)
-                                        showSortMenu = false
-                                    },
-                                    leadingIcon = {
-                                        if (sortOption == option) Icon(Icons.Default.Check, contentDescription = null)
-                                    }
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(4.dp))
-                        IconButton(onClick = { showFilterMenu = true }) {
-                            Icon(Icons.Default.FilterList, contentDescription = "Filter")
-                        }
-                        DropdownMenu(expanded = showFilterMenu, onDismissRequest = { showFilterMenu = false }) {
-                            FilterOption.entries.forEach { option ->
-                                DropdownMenuItem(
-                                    text = { Text("Filter: ${option.name.lowercase().replace("_", " ")}") },
-                                    onClick = {
-                                        viewModel.setFilterOption(option)
-                                        showFilterMenu = false
-                                    },
-                                    leadingIcon = {
-                                        if (filterOption == option) Icon(Icons.Default.Check, contentDescription = null)
-                                    }
-                                )
-                            }
-                        }
-                    }
-                },
-                singleLine = true
+            // 1. Suche und Filter in eigene Funktion
+            SearchAndFilterSection(
+                searchQuery = searchQuery,
+                onQueryChange = { viewModel.setSearchQuery(it) },
+                sortOption = sortOption,
+                onSortChange = { viewModel.setSortOption(it) },
+                filterOption = filterOption,
+                onFilterChange = { viewModel.setFilterOption(it) }
             )
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(items, key = { it.id }) { item ->
-                    PantryItemCard(
-                        item = item,
-                        onClick = { onItemClick(item.id) },
-                        onDeleteClick = { itemToDelete = item },
-                        onConsumeClick = { viewModel.consumeOne(item) },
-                        onDuplicateClick = { viewModel.duplicateItem(item) }
-                    )
-                }
-            }
-
+            // 2. Liste in eigene Funktion
+            PantryListContent(
+                items = items,
+                emptyMessage = emptyStateMessage,
+                onItemClick = onItemClick,
+                onDeleteRequest = { itemToDelete = it },
+                onConsume = { viewModel.consumeOne(it) },
+                onDuplicate = { viewModel.duplicateItem(it) }
+            )
         }
     }
 
@@ -171,16 +111,145 @@ fun InventoryListScreen(
                         viewModel.deleteItem(item)
                         itemToDelete = null
                     }
-                }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { itemToDelete = null }) { Text("Cancel") } }
+        )
+    }
+}
+
+@Composable
+fun SearchAndFilterSection(
+    searchQuery: String,
+    onQueryChange: (String) -> Unit,
+    sortOption: SortOption,
+    onSortChange: (SortOption) -> Unit,
+    filterOption: FilterOption,
+    onFilterChange: (FilterOption) -> Unit
+) {
+    var showSortMenu by remember { mutableStateOf(false) }
+    var showFilterMenu by remember { mutableStateOf(false) }
+
+    Column {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onQueryChange,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            placeholder = { Text("Search items...") },
+            leadingIcon = { Icon(Icons.Default.Search, null) },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { onQueryChange("") }) {
+                        Icon(Icons.Default.Clear, "Clear")
+                    }
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { itemToDelete = null }) {
-                    Text("Cancel")
+            singleLine = true,
+            shape = MaterialTheme.shapes.medium
+        )
+        LazyRow(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp)
+        ) {
+            item {
+                FilterChip(
+                    selected = true,
+                    onClick = { showSortMenu = true },
+                    label = { Text("Sort: ${sortOption.name.lowercase().replace("_", " ")}") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Sort,
+                            null,
+                            Modifier.size(18.dp)
+                        )
+                    }
+                )
+                DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                    SortOption.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.name.lowercase().replace("_", " ")) },
+                            onClick = { onSortChange(option); showSortMenu = false }
+                        )
+                    }
                 }
             }
-        )
+            item {
+                FilterChip(
+                    selected = filterOption != FilterOption.ALL,
+                    onClick = { showFilterMenu = true },
+                    label = { Text("Filter: ${filterOption.name.lowercase().replace("_", " ")}") },
+                    leadingIcon = { Icon(Icons.Default.FilterList, null, Modifier.size(18.dp)) }
+                )
+                DropdownMenu(
+                    expanded = showFilterMenu,
+                    onDismissRequest = { showFilterMenu = false }) {
+                    FilterOption.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.name.lowercase().replace("_", " ")) },
+                            onClick = { onFilterChange(option); showFilterMenu = false }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PantryListContent(
+    items: List<PantryItem>,
+    emptyMessage: String,
+    onItemClick: (Long) -> Unit,
+    onDeleteRequest: (PantryItem) -> Unit,
+    onConsume: (PantryItem) -> Unit,
+    onDuplicate: (PantryItem) -> Unit
+) {
+    if (items.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(text = emptyMessage, style = MaterialTheme.typography.bodyLarge)
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(items, key = { it.id }) { item ->
+                val dismissState = rememberSwipeToDismissBoxState(
+                    confirmValueChange = {
+                        if (it == SwipeToDismissBoxValue.EndToStart) {
+                            onDeleteRequest(item)
+                            false // Warte auf Dialog-Bestätigung
+                        } else false
+                    }
+                )
+
+                SwipeToDismissBox(
+                    state = dismissState,
+                    backgroundContent = {
+                        val color =
+                            if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart)
+                                MaterialTheme.colorScheme.errorContainer else Color.Transparent
+                        Box(
+                            Modifier.fillMaxSize().padding(8.dp).padding(horizontal = 20.dp),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    enableDismissFromStartToEnd = false
+                ) {
+                    PantryItemCard(
+                        item = item,
+                        onClick = { onItemClick(item.id) },
+                        onDeleteClick = { onDeleteRequest(item) },
+                        onConsumeClick = { onConsume(item) },
+                        onDuplicateClick = { onDuplicate(item) }
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -192,76 +261,51 @@ fun PantryItemCard(
     onConsumeClick: () -> Unit,
     onDuplicateClick: () -> Unit
 ) {
-    val now = System.currentTimeMillis()
-    val thresholdMillis = item.expiryThresholdDays * 24 * 60 * 60 * 1000L
-
-    val status = when {
-        item.expiryDate == null -> null
-        item.expiryDate < now -> "OVERDUE"
-        item.expiryDate <= (now + thresholdMillis) -> "EXPIRING SOON"
-        else -> null
-    }
-
+    val status = remember(item) { item.getExpiryStatus() }
+    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val cardContainerColor = when (status) {
-        "OVERDUE" -> Color.Red.copy(alpha = 0.15f)      // Leicht-Rot
-        "EXPIRING SOON" -> Color(0xFFFFA000).copy(alpha = 0.15f) // Leicht-Orange
+        ExpiryStatus.OVERDUE -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f)
+        ExpiryStatus.EXPIRING_SOON -> Color(0xFFFFA000).copy(alpha = 0.15f)
         else -> MaterialTheme.colorScheme.surfaceVariant   // Standardfarbe
     }
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = cardContainerColor
-        ),
-        // Optional: Ein farbiger Rand für noch mehr Deutlichkeit
-        border = if (status != null) BorderStroke(1.dp, cardContainerColor.copy(alpha = 0.5f)) else null
+        colors = CardDefaults.cardColors(containerColor = cardContainerColor),
+        border = if (status != ExpiryStatus.NORMAL) BorderStroke(1.dp, cardContainerColor.copy(alpha = 0.5f)) else null
     ) {
         Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+                Text(text = item.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
                     text = "${item.quantity} ${item.unit.label} • ${item.category} • ${item.location}",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 item.expiryDate?.let { expiry ->
-                    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                    val expiryString = sdf.format(Date(expiry))
-                    Text(
-                        text = "Expires: $expiryString",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    val expiryString = dateFormatter.format(Date(expiry))
+                    Text(text = "Expires: $expiryString", style = MaterialTheme.typography.bodySmall)
                 }
             }
             IconButton(onClick = onDeleteClick) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
             }
         }
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.End
         ) {
             TextButton(onClick = onDuplicateClick) {
-                Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
                 Text("Duplicate")
             }
             TextButton(onClick = onConsumeClick) {
-                Icon(Icons.Default.RemoveCircleOutline, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.RemoveCircleOutline, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
                 Text("Consume 1")
             }

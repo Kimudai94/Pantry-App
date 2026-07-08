@@ -20,3 +20,15 @@ data class PantryItem(
   val timesBought: Int = 0,
   val neededQuantity: Double = 0.0,
 )
+
+enum class ExpiryStatus { NORMAL, EXPIRING_SOON, OVERDUE }
+
+fun PantryItem.getExpiryStatus(now: Long = System.currentTimeMillis()): ExpiryStatus {
+  if (expiryDate == null) return ExpiryStatus.NORMAL
+  val thresholdMillis = expiryThresholdDays * 24 * 60 * 60 * 1000L
+  return when {
+    expiryDate < now -> ExpiryStatus.OVERDUE
+    expiryDate <= (now + thresholdMillis) -> ExpiryStatus.EXPIRING_SOON
+    else -> ExpiryStatus.NORMAL
+  }
+}

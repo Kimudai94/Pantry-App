@@ -1,6 +1,11 @@
 package com.example.pantrypure.ui.viewmodel
 
-import com.example.pantrypure.data.model.*
+import com.example.pantrypure.data.model.Meal
+import com.example.pantrypure.data.model.MealIngredientWithName
+import com.example.pantrypure.data.model.MealPlan
+import com.example.pantrypure.data.model.MealPlanWithDetails
+import com.example.pantrypure.data.model.PantryItem
+import com.example.pantrypure.data.model.PantryUnit
 import com.example.pantrypure.data.repository.PantryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -98,7 +103,13 @@ class PantryViewModelTest {
                 plan = MealPlan(id = 1, mealId = 10, plannedDate = monday, servings = 2),
                 meal = Meal(id = 10, name = "Pasta"),
                 ingredients = listOf(
-                    MealIngredientWithName(id = 1, mealId = 10, ingredientName = "Tomato", requiredQuantity = 100.0, requiredUnit = PantryUnit.GRAMS)
+                    MealIngredientWithName(
+                        id = 1,
+                        mealId = 10,
+                        ingredientName = "Tomato",
+                        requiredQuantity = 100.0,
+                        requiredUnit = PantryUnit.GRAMS
+                    )
                 )
             ),
             MealPlanWithDetails(

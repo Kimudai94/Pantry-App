@@ -5,7 +5,12 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.pantrypure.data.database.PantryDatabase
-import com.example.pantrypure.data.model.*
+import com.example.pantrypure.data.model.Meal
+import com.example.pantrypure.data.model.MealCategory
+import com.example.pantrypure.data.model.MealConsumptionResult
+import com.example.pantrypure.data.model.MealIngredient
+import com.example.pantrypure.data.model.PantryItem
+import com.example.pantrypure.data.model.PantryUnit
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -30,11 +35,12 @@ class PantryRepositoryTest {
         ).allowMainThreadQueries().build()
         
         repository = PantryRepository(
-            db.pantryDao(),
-            db.consumptionDao(),
-            db.mealDao(),
-            db.mealIngredientDao(),
-            db.mealPlanDao()
+          db.pantryDao(),
+          db.consumptionDao(),
+          db.mealDao(),
+          db.mealIngredientDao(),
+          db.mealPlanDao(),
+          offerDao = db.offerDao()
         )
     }
 

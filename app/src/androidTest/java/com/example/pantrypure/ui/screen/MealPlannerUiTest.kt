@@ -1,14 +1,24 @@
 package com.example.pantrypure.ui.screen
 
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
-import com.example.pantrypure.data.model.*
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import com.example.pantrypure.data.model.Meal
+import com.example.pantrypure.data.model.MealIngredientWithName
+import com.example.pantrypure.data.model.MealPlan
+import com.example.pantrypure.data.model.MealPlanWithDetails
+import com.example.pantrypure.data.model.PantryUnit
 import com.example.pantrypure.data.repository.PantryRepository
 import com.example.pantrypure.ui.viewmodel.PantryViewModel
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.kotlin.*
+import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 
 class MealPlannerUiTest {
 
@@ -56,8 +66,8 @@ class MealPlannerUiTest {
                 MealIngredientWithName(
                     id = 1,
                     mealId = 10,
-                    ingredientName = "Tomato", 
-                    requiredQuantity = 1.0, 
+                    ingredientName = "Tomato",
+                    requiredQuantity = 1.0,
                     requiredUnit = PantryUnit.PIECES
                 )
             )

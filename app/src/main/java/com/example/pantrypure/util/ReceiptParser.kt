@@ -13,14 +13,10 @@ class ReceiptParser {
         for (line in lines) {
             val text = line.text.trim()
             
-            // Basic filtering logic:
-            // 1. Skip lines that look like prices (e.g., "1,99", "2.50 EUR")
-            if (isPrice(text)) continue
-            
-            // 2. Skip common receipt keywords
+            // Skip common receipt keywords like "SUMME", "TOTAL", etc.
             if (isCommonReceiptKeyword(text)) continue
             
-            // 3. Clean up the text (remove quantities at start, etc.)
+            // Clean up the text: Remove prices at the end and quantities at the start
             val cleaned = cleanIngredientName(text)
             
             if (cleaned.length > 2) {
@@ -31,25 +27,28 @@ class ReceiptParser {
         return results.distinct()
     }
 
-    private fun isPrice(text: String): Boolean {
-        val priceRegex = """.*\d+[,.]\d{2}.*""".toRegex()
-        return priceRegex.matches(text) || text.contains("EUR", ignoreCase = true) || text.contains("€")
-    }
-
     private fun isCommonReceiptKeyword(text: String): Boolean {
         val keywords = listOf(
             "SUMME", "TOTAL", "MWST", "STEUER", "DATUM", "UHRZEIT", "BON", "BELEG",
             "KARTE", "BAR", "RUECKGELD", "GEGEBEN", "FILIALE", "TEL:", "DANKE",
-            "NETTO", "BRUTTO", "PFAND", "ZWISCHENSUMME"
+            "NETTO", "BRUTTO", "PFAND", "ZWISCHENSUMME", "HELFEN SIE", "VIELEN DANK"
         )
         return keywords.any { text.contains(it, ignoreCase = true) }
     }
 
     private fun cleanIngredientName(text: String): String {
-        // Remove leading numbers and units (e.g., "1 STK APFEL" -> "APFEL")
-        // This is a very basic implementation and could be much more sophisticated
-        return text.replace("""^\d+\s*(STK|G|KG|L|ML|X)?\s+""".toRegex(RegexOption.IGNORE_CASE), "")
+        // 1. Remove prices at the end (e.g., "1,99", "2.50 A", "3.00€")
+        // Matches digits, followed by comma/dot, two digits, optional space, and optional letter or Euro symbol at the end
+        var result = text.replace("""\d+[,.]\d{2}(\s*[A-Z€])?$""".toRegex(), "").trim()
+        
+        // 2. Remove leading quantities (e.g., "1 STK", "0,500 kg", "2 x")
+        result = result.replace("""^(\d+([,.]\d+)?\s*(x|stk|kg|g|l|ml)?\s+)""".toRegex(RegexOption.IGNORE_CASE), "")
             .trim()
-            .split("  ")[0] // Often receipts have multiple spaces before the price
+
+        // 3. Remove common prefixes that don't belong to the name
+        result = result.replace("""^[*#-]\s*""".toRegex(), "")
+        
+        // 4. Split by multiple spaces (often used to separate name from other columns)
+        return result.split("  ")[0].trim()
     }
 }
